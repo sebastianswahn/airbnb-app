@@ -27,7 +27,7 @@ export async function POST(req) {
   }
 }
 
-export async function GET(req) {
+/* export async function GET(req) {
   await dbConnect();
   const { location, minPrice, maxPrice } = req.query;
 
@@ -45,3 +45,4 @@ export async function GET(req) {
     });
   }
 }
+ */

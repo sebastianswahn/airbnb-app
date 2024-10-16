@@ -5,10 +5,8 @@ import bcrypt from "bcryptjs";
 export async function GET(req) {
   await dbConnect();
   try {
-    // Fetch all users from the User collection
-    const users = await User.find(); // Fetch all users without any condition
+    const users = await User.find();
 
-    // If no users are found, return an appropriate response
     if (!users || users.length === 0) {
       return new Response(JSON.stringify({ error: "No users found" }), {
         status: 404,
@@ -41,22 +39,18 @@ export async function POST(req) {
       });
     }
 
-    // Hash the password manually before saving the user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(body.password, salt);
 
-    // Create the new user with the hashed password
     const newUser = new User({
       name: body.name,
       email: body.email,
-      password: hashedPassword, // Store the hashed password
+      password: hashedPassword,
       role: body.role,
     });
 
-    // Save the user to the database
     await newUser.save();
 
-    // Return the created user, excluding the password from the response
     const userResponse = {
       _id: newUser._id,
       name: newUser.name,

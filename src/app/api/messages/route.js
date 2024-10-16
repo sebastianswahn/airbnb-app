@@ -30,12 +30,11 @@ export async function POST(req) {
   await dbConnect();
 
   try {
-    // Authenticate the request and get the sender's (authenticated user's) ID from the token
     const authResponse = await authenticate(req);
-    if (authResponse) return authResponse; // Return the auth error if not authenticated
+    if (authResponse) return authResponse;
 
-    const sender = req.user.id; // Authenticated user's ID extracted from the JWT token
-    const { receiver, content } = await req.json(); // Parse the request body
+    const sender = req.user.id;
+    const { receiver, content } = await req.json();
 
     // Validate the input
     if (!receiver || !content) {
@@ -45,17 +44,14 @@ export async function POST(req) {
       );
     }
 
-    // Create a new message
     const newMessage = new Message({
-      sender, // Automatically set the sender as the authenticated user
+      sender,
       receiver,
       content,
     });
 
-    // Save the message to the database
     await newMessage.save();
 
-    // Return the created message
     return new Response(JSON.stringify(newMessage), { status: 201 });
   } catch (error) {
     console.error("Error creating message:", error);

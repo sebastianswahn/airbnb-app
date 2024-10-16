@@ -6,16 +6,13 @@ export async function POST(req) {
   await dbConnect();
 
   try {
-    const { email, password } = await req.json(); // Parse the request body
+    const { email, password } = await req.json();
 
-    // Log email and password to check if they're being received
     console.log("Email from request:", email);
     console.log("Password from request:", password);
 
-    // Find user by email
     const user = await User.findOne({ email });
 
-    // Log user to check if it is being found correctly
     console.log("User found:", user);
 
     if (!user) {
@@ -24,7 +21,6 @@ export async function POST(req) {
       });
     }
 
-    // Check if the password is correct
     const isPasswordCorrect = await user.matchPassword(password);
     if (!isPasswordCorrect) {
       return new Response(JSON.stringify({ error: "Invalid credentials" }), {
@@ -32,7 +28,6 @@ export async function POST(req) {
       });
     }
 
-    // Generate JWT token for the user
     const token = generateToken(user);
 
     return new Response(
@@ -43,7 +38,7 @@ export async function POST(req) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Login error:", error); // Log the actual error for debugging
+    console.error("Login error:", error);
     return new Response(JSON.stringify({ error: "Error logging in" }), {
       status: 500,
     });

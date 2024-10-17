@@ -1,10 +1,15 @@
 import dbConnect from "../../../utils/db";
 import User from "../../../models/user";
+import { authenticate } from "../../../middleware/auth";
 import bcrypt from "bcryptjs";
 
 export async function GET(req) {
   await dbConnect();
+
   try {
+    const authResponse = await authenticate(req);
+    if (authResponse) return authResponse; // Kontrollera autentisering
+
     const users = await User.find();
 
     if (!users || users.length === 0) {

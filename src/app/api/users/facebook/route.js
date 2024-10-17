@@ -1,7 +1,7 @@
-import dbConnect from "../../../utils/db";
-import User from "../../../models/user";
+import dbConnect from "../../../../utils/db";
+import User from "../../../../models/user";
 import fetch from "node-fetch";
-import { generateToken } from "../../../utils/jwt";
+import { generateToken } from "../../../../utils/jwt";
 
 export async function POST(req) {
   await dbConnect();

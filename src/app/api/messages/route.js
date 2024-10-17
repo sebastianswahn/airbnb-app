@@ -6,23 +6,45 @@ export async function GET(req) {
   await dbConnect();
 
   try {
-    // Authenticate the request and get the user's (authenticated user's) ID from the token
     const authResponse = await authenticate(req);
-    if (authResponse) return authResponse; // Return the auth error if not authenticated
+    if (authResponse) return authResponse;
 
-    const userId = req.user.id; // Authenticated user's ID from the JWT token
+    const userId = req.user.id;
 
-    // Find messages where the authenticated user is either the sender or the receiver
-    const messages = await Message.find({
-      $or: [{ sender: userId }, { receiver: userId }],
-    }).sort({ createdAt: 1 }); // Sort messages by creation time
+    const conversations = await Message.aggregate([
+      {
+        $match: {
+          $or: [{ sender: userId }, { receiver: userId }],
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $gt: ["$sender", "$receiver"] },
+              { sender: "$sender", receiver: "$receiver" },
+              { sender: "$receiver", receiver: "$sender" },
+            ],
+          },
+          lastMessage: { $last: "$content" },
+          lastMessageTime: { $last: "$createdAt" },
+          participants: { $addToSet: ["$sender", "$receiver"] },
+        },
+      },
+      {
+        $sort: { lastMessageTime: -1 },
+      },
+    ]);
 
-    return new Response(JSON.stringify(messages), { status: 200 });
+    return new Response(JSON.stringify(conversations), { status: 200 });
   } catch (error) {
-    console.error("Error fetching messages:", error);
-    return new Response(JSON.stringify({ error: "Unable to fetch messages" }), {
-      status: 500,
-    });
+    console.error("Error fetching conversations:", error);
+    return new Response(
+      JSON.stringify({ error: "Unable to fetch conversations" }),
+      {
+        status: 500,
+      }
+    );
   }
 }
 

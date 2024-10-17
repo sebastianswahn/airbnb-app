@@ -11,7 +11,10 @@ export async function GET(req) {
 
     const guestId = req.user.id;
 
-    const bookings = await Booking.find({ guest: guestId }).populate("host");
+    const bookings = await Booking.find(
+      { guest: guestId },
+      "listing startDate endDate totalPrice"
+    );
 
     return new Response(JSON.stringify(bookings), { status: 200 });
   } catch (error) {

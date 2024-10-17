@@ -1,5 +1,6 @@
 import dbConnect from "../../../utils/db";
 import User from "../../../models/user";
+import bcrypt from "bcryptjs";
 import { generateToken } from "../../../utils/jwt";
 
 export async function POST(req) {
@@ -21,7 +22,7 @@ export async function POST(req) {
       });
     }
 
-    const isPasswordCorrect = await user.matchPassword(password);
+    const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
       return new Response(JSON.stringify({ error: "Invalid credentials" }), {
         status: 401,

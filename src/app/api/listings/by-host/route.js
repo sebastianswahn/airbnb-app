@@ -1,11 +1,15 @@
-import dbConnect from "../../../utils/db";
-import Listing from "../../../models/listing";
+import dbConnect from "../../../../utils/db";
+import Listing from "../../../../models/listing";
+import { authenticate } from "../../../../middleware/auth";
 
-export async function GET(req) {
+export async function POST(req) {
   await dbConnect();
 
   try {
-    const { hostId } = req.query;
+    const authResponse = await authenticate(req);
+    if (authResponse) return authResponse;
+
+    const { hostId } = await req.json();
 
     if (!hostId) {
       return new Response(JSON.stringify({ error: "Host ID is required" }), {

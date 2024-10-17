@@ -1,6 +1,7 @@
 import dbConnect from "../../../utils/db";
 import Message from "../../../models/message";
 import { authenticate } from "../../../middleware/auth";
+import mongoose from "mongoose";
 
 export async function GET(req) {
   await dbConnect();
@@ -9,41 +10,23 @@ export async function GET(req) {
     const authResponse = await authenticate(req);
     if (authResponse) return authResponse;
 
-    const userId = req.user.id;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+    console.log("Authenticated User ID as ObjectId:", userId);
 
-    const conversations = await Message.aggregate([
-      {
-        $match: {
-          $or: [{ sender: userId }, { receiver: userId }],
-        },
-      },
-      {
-        $group: {
-          _id: {
-            $cond: [
-              { $gt: ["$sender", "$receiver"] },
-              { sender: "$sender", receiver: "$receiver" },
-              { sender: "$receiver", receiver: "$sender" },
-            ],
-          },
-          lastMessage: { $last: "$content" },
-          lastMessageTime: { $last: "$createdAt" },
-          participants: { $addToSet: ["$sender", "$receiver"] },
-        },
-      },
-      {
-        $sort: { lastMessageTime: -1 },
-      },
-    ]);
+    const messages = await Message.find({
+      $or: [{ sender: userId }, { receiver: userId }],
+    });
 
-    return new Response(JSON.stringify(conversations), { status: 200 });
+    console.log("Messages found for user:", messages);
+
+    return new Response(JSON.stringify(messages), { status: 200 });
   } catch (error) {
-    console.error("Error fetching conversations:", error);
+    console.error("Error fetching messages:", error.message);
     return new Response(
-      JSON.stringify({ error: "Unable to fetch conversations" }),
-      {
-        status: 500,
-      }
+      JSON.stringify({
+        error: `Unable to fetch messages: ${error.message}`,
+      }),
+      { status: 500 }
     );
   }
 }

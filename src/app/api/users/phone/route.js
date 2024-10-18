@@ -4,9 +4,8 @@ import { generateToken } from "../../../../utils/jwt";
 import twilio from "twilio";
 import dotenv from "dotenv";
 
-dotenv.config({ path: ".env.local" }); // Laddar .env.local-filen
+dotenv.config({ path: ".env.local" });
 
-// Twilio-klient
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
@@ -16,9 +15,8 @@ export async function POST(req) {
   await dbConnect();
 
   try {
-    const { phone, otp } = await req.json(); // Få telefonnummer och OTP från förfrågan
+    const { phone, otp } = await req.json();
 
-    // Validera OTP genom Twilio Verify API
     const isValidOTP = await validateOTP(phone, otp);
     if (!isValidOTP) {
       return new Response(JSON.stringify({ error: "Invalid OTP" }), {
@@ -26,18 +24,14 @@ export async function POST(req) {
       });
     }
 
-    // Kolla om användaren redan finns i databasen baserat på telefonnummer
     let user = await User.findOne({ phone });
     if (!user) {
-      // Skapa en ny användare om de inte finns, och sätt endast telefonnummer
       user = new User({ phone });
       await user.save();
     }
 
-    // Generera JWT för användaren
     const jwtToken = generateToken(user);
 
-    // Returnera JWT och användarinfo
     return new Response(
       JSON.stringify({
         token: jwtToken,
@@ -54,7 +48,6 @@ export async function POST(req) {
   }
 }
 
-// Validera OTP med Twilio
 async function validateOTP(phone, otp) {
   try {
     const verification = await client.verify

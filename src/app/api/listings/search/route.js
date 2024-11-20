@@ -16,30 +16,25 @@ export async function GET(req) {
   try {
     const query = {};
 
-    // Add case-insensitive partial match for location
     if (location) {
-      query.location = { $regex: location, $options: "i" }; // Case-insensitive search
+      query.location = { $regex: location, $options: "i" };
     }
 
-    // Add price range filter if minPrice and/or maxPrice are provided
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = minPrice;
       if (maxPrice) query.price.$lte = maxPrice;
     }
 
-    // Pagination (limit and skip)
     const skip = (page - 1) * limit;
 
-    // Sorting (default by price, ascending)
     const sortOptions = {};
     if (sortBy) {
-      sortOptions[sortBy] = sortBy.startsWith("-") ? -1 : 1; // Sort descending if prefixed with "-", otherwise ascending
+      sortOptions[sortBy] = sortBy.startsWith("-") ? -1 : 1; 
     } else {
-      sortOptions.price = 1; // Default sorting by price (ascending)
+      sortOptions.price = 1;
     }
 
-    // Fetch listings based on query, pagination, and sorting
     const listings = await Listing.find(query)
       .skip(skip)
       .limit(parseInt(limit))

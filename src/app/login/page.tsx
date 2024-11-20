@@ -1,213 +1,177 @@
-"use client";
+import Image from "next/image";
+import Link from "next/link";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-
-const LoginPage: React.FC = () => {
-  const [phone, setPhone] = useState<string>("");
-  const [otp, setOtp] = useState<string>("");
-  const [otpSent, setOtpSent] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const router = useRouter();
-
-  const fetchProtectedData = async () => {
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      console.error("No token found");
-      return;
-    }
-
-    try {
-      const response = await fetch("/api/protected", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        console.log("Protected data:", data);
-      } else {
-        console.error("Failed to fetch protected data", data.error);
-      }
-    } catch (error) {
-      console.error("Error fetching protected data:", error);
-    }
-  };
-
-  const handleSendOtp = async () => {
-    setError(null);
-    try {
-      const response = await fetch("/api/users/phone/getotp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        setOtpSent(true); // Visa OTP-fältet
-      } else {
-        setError(data.error || "Failed to send OTP");
-      }
-    } catch (err) {
-      setError("Failed to send OTP. Please try again.");
-    }
-  };
-
-  const handleOtpLogin = async () => {
-    setError(null);
-    try {
-      const response = await fetch("/api/users/phone", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp }),
-      });
-
-      const data = await response.json();
-      console.log("Backend response:", data);
-
-      if (response.ok) {
-        if (data.token) {
-          if (typeof window !== "undefined") {
-            localStorage.setItem("token", data.token);
-            console.log(
-              "Token saved in localStorage:",
-              localStorage.getItem("token")
-            );
-
-            await fetchProtectedData();
-
-            router.push("/");
-          } else {
-            console.log("LocalStorage is not available.");
-          }
-        } else {
-          setError("No token received from the server.");
-        }
-      } else {
-        setError(data.error || "Invalid OTP");
-      }
-    } catch (error) {
-      setError("Phone login failed. Please try again.");
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    try {
-      const response = await fetch("/api/auth/google");
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        router.push("/");
-      } else {
-        setError("Failed to login with Google.");
-      }
-    } catch (error) {
-      setError("Google login failed. Please try again.");
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    try {
-      const response = await fetch("/api/auth/facebook");
-      const data = await response.json();
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        router.push("/");
-      } else {
-        setError("Failed to login with Facebook.");
-      }
-    } catch (error) {
-      setError("Facebook login failed. Please try again.");
-    }
-  };
-
+const LoginSignup = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold mb-4 text-center">Logga in</h2>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-        <div className="mb-4">
-          <label
-            htmlFor="phone"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Telefonnummer
-          </label>
-          <input
-            type="text"
-            name="phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="mt-1 p-2 w-full border rounded-lg"
-          />
-          <button
-            type="button"
-            onClick={handleSendOtp}
-            className="w-full bg-green-500 text-white p-2 rounded-lg hover:bg-green-600 mt-4"
-          >
-            Skicka OTP
-          </button>
+    <>
+      <div className="max-w-[768px] mx-auto w-full">
+        <div className="border-b border-solid border-grey-1100 pb-3.5 pt-6">
+          <h1 className="text-center text-base font-roboto text-black-600 font-extrabold">
+            Log in or sign up
+          </h1>
         </div>
 
-        {otpSent && (
-          <div className="mb-4">
-            <label
-              htmlFor="otp"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Ange OTP
-            </label>
-            <input
-              type="text"
-              name="otp"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
-              className="mt-1 p-2 w-full border rounded-lg"
-            />
-            <button
-              type="button"
-              onClick={handleOtpLogin}
-              className="w-full bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 mt-4"
-            >
-              Logga in med OTP
-            </button>
+        <section className="pt-10">
+          <div className="px-6">
+            <div className="flex items-center justify-between pb-6">
+              <h2 className="text-[22px] font-semibold leading-[26px] font-roboto text-black-600">
+                Welcome to Airbnb
+              </h2>
+            </div>
+
+            <div>
+              <div className="border rounded-lg px-0 p-4">
+                <div className="relative">
+                  <select className="w-full appearance-none bg-transparent">
+                    <option>Sweden (+46)</option>
+                    <option>United States (+1)</option>
+                    <option>United Kingdom (+44)</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none">
+                    <Image
+                      src="/chevron-down.svg"
+                      alt="Dropdown arrow"
+                      width={14}
+                      height={8}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm mt-2">
+                We&apos;ll call or text you to confirm your number. Standard
+                message and data rates apply.{" "}
+                <Link href="/privacy" className="font-semibold underline">
+                  Privacy Policy
+                </Link>
+              </p>
+
+              <button className="w-full rounded-lg text-base h-12 font-roboto font-semibold text-white flex items-center justify-center bg-blue-600 mt-4">
+                Continue
+              </button>
+
+              <div className="flex items-center pt-6 pb-4">
+                <div className="max-w-[141px] h-[1px] w-full bg-grey-600" />
+                <span className="mx-4 inline-block text-xs font-normal text-black-600 font-roboto">
+                  or
+                </span>
+                <div className="max-w-[141px] h-[1px] w-full bg-grey-600" />
+              </div>
+
+              {/* Social Login Buttons */}
+              <div className="space-y-4">
+                {[
+                  { icon: "fb.svg", text: "Continue with Facebook" },
+                  { icon: "google.svg", text: "Continue with Google" },
+                  { icon: "apple.svg", text: "Continue with Apple" },
+                  { icon: "mail.svg", text: "Continue with email" },
+                ].map((provider) => (
+                  <Link
+                    key={provider.text}
+                    href="#"
+                    className="text-center text-sm gap-[53px] text-black-600 font-roboto font-semibold rounded-lg border border-black-600 flex items-center justify-start h-12 pl-6"
+                  >
+                    <Image
+                      src={`/${provider.icon}`}
+                      alt={provider.text}
+                      width={24}
+                      height={24}
+                    />
+                    {provider.text}
+                  </Link>
+                ))}
+              </div>
+
+              <div className="pt-11 pb-8 text-center">
+                <Link
+                  href="/help"
+                  className="text-sm font-roboto text-black-600 font-semibold"
+                >
+                  Need help?
+                </Link>
+              </div>
+            </div>
           </div>
-        )}
-
-        <div className="my-4">
-          <button
-            type="button"
-            onClick={handleGoogleLogin}
-            className="w-full bg-red-500 text-white p-2 rounded-lg hover:bg-red-600"
-          >
-            Logga in med Google
-          </button>
-        </div>
-
-        <div className="my-4">
-          <button
-            type="button"
-            onClick={handleFacebookLogin}
-            className="w-full bg-blue-700 text-white p-2 rounded-lg hover:bg-blue-800"
-          >
-            Logga in med Facebook
-          </button>
-        </div>
-
-        <p className="mt-4 text-center">
-          Har du inget konto?{" "}
-          <a href="/register" className="text-blue-500">
-            Registrera dig
-          </a>
-        </p>
+        </section>
       </div>
-    </div>
+
+      {/* Footer */}
+      <footer className="max-w-[1360px] mx-auto">
+        <div className="flex items-center justify-between w-full px-[26px]">
+          <div className="flex items-center gap-4">
+            <span>© {new Date().getFullYear()} Airbnb, Inc.</span>
+            {[
+              "Privacy",
+              "Terms",
+              "Sitemap",
+              "Company details",
+              "Destinations",
+            ].map((item) => (
+              <Link key={item} href="#" className="text-grey-700">
+                {item}
+              </Link>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-4">
+            <Link href="#" className="gap-1 text-black-600 flex items-center">
+              <Image
+                src="/world-icon.svg"
+                alt="Language"
+                width={16}
+                height={16}
+              />
+              English (IN)
+            </Link>
+            <Link href="#" className="text-black-600">
+              INR
+            </Link>
+            <Link
+              href="#"
+              className="text-black-600 flex items-center gap-[6px]"
+            >
+              Support & resources
+              <Image src="/up-arw.svg" alt="Arrow up" width={12} height={12} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t">
+          <div className="flex justify-around py-2">
+            {[
+              { icon: "ftr-icon1.svg", label: "Explore" },
+              { icon: "ftr-icon2.svg", label: "Trips" },
+              { icon: "ftr-icon3.svg", label: "Inbox" },
+              { icon: "ftr-icon4.svg", label: "Profile" },
+            ].map((item) => (
+              <Link key={item.label} href="#" className="text-center">
+                <div className="relative">
+                  <Image
+                    src={`/${item.icon}`}
+                    alt={item.label}
+                    width={24}
+                    height={24}
+                    className="mx-auto mb-[7px]"
+                  />
+                  {item.label === "Inbox" && (
+                    <Image
+                      src="/small-box.svg"
+                      alt="Notification"
+                      width={8}
+                      height={8}
+                      className="absolute -top-1 -right-2"
+                    />
+                  )}
+                </div>
+                <span className="text-xs">{item.label}</span>
+              </Link>
+            ))}
+          </div>
+        </nav>
+      </footer>
+    </>
   );
 };
 
-export default LoginPage;
+export default LoginSignup;

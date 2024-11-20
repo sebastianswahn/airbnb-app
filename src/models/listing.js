@@ -5,7 +5,8 @@ const ListingSchema = new mongoose.Schema({
   description: String,
   location: String,
   price: { type: Number, required: true },
-  host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }, // Värd
+  host: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  images: [{ type: String }],
 });
 
 export default mongoose.models.Listing ||

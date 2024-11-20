@@ -1,69 +1,67 @@
-"use client";
+// app/page.tsx
+import { Suspense } from 'react'
+import Header from '@/components/Header'
+import SearchSection from '../components/SearchSection'
+import ListingGrid from '@/components/istingGrid'
+import Footer from '@/components/Footer'
+import { AuthCheck } from '@/components/AuthCheck'
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import jwt from "jsonwebtoken";
-
-// Typ för JWT payload
-interface JwtPayload {
-  id: string;
-  email: string;
-  role: string;
-  iat: number;
-  exp: number;
+async function getListings() {
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`, {
+      cache: 'no-store'
+    })
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch listings')
+    }
+    
+    return response.json()
+  } catch (error) {
+    console.error('Error fetching listings:', error)
+    return []
+  }
 }
 
-const LandingPage: React.FC = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isClient, setIsClient] = useState<boolean>(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsClient(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isClient) {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        router.push("/login");
-        return;
-      }
-
-      try {
-        const decoded = jwt.decode(token) as JwtPayload;
-
-        // Om du behöver kolla på payload, t.ex. roll
-        if (decoded.exp * 1000 < Date.now()) {
-          localStorage.removeItem("token");
-          router.push("/login");
-        } else {
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        localStorage.removeItem("token");
-        router.push("/login");
-      }
-    }
-  }, [isClient, router]);
-
-  if (!isAuthenticated) {
-    return null;
-  }
+export default async function LandingPage() {
+  const listings = await getListings()
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-gray-100 p-4">
-      <h1 className="text-2xl font-bold mb-4 text-center">
-        Välkommen till din Dashboard
-      </h1>
-      <p className="text-gray-700 text-center">
-        Du är inloggad och kan nu se denna sida!
-      </p>
-    </div>
-  );
-};
+    <AuthCheck>
+      <div className="min-h-screen bg-gray-100">
+        <Header />
+        <main>
+          <SearchSection />
+          <section className="section md:bg-black/15 bg-skyblue-600 pt-10 xl:pb-[151px] md:pb-[100px] pb-[50px]">
+            <div className="max-w-[1360px] px-[26px] w-full mx-auto">
+              <Suspense fallback={<ListingsLoadingSkeleton />}>
+                <ListingGrid initialListings={listings} />
+              </Suspense>
+            </div>
+          </section>
+        </main>
+        <Footer />
+      </div>
+    </AuthCheck>
+  )
+}
 
-export default LandingPage;
+function ListingsLoadingSkeleton() {
+  return (
+    <div className="grid lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-x-5 xl:gap-y-9 gap-y-5">
+      {[...Array(12)].map((_, i) => (
+        <div 
+          key={i}
+          className="animate-pulse bg-white rounded-xl p-4"
+        >
+          <div className="bg-gray-200 h-64 rounded-lg" />
+          <div className="mt-4 space-y-2">
+            <div className="h-4 bg-gray-200 rounded w-3/4" />
+            <div className="h-4 bg-gray-200 rounded w-1/2" />
+            <div className="h-4 bg-gray-200 rounded w-1/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}

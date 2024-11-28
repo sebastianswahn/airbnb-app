@@ -8,9 +8,8 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: ["your-image-domain.com"], // Add your image domains here
+    domains: ["your-image-domain.com"],
   },
-  // Enable experimental features if needed
   experimental: {
     appDir: true,
   },

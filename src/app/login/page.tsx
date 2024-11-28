@@ -1,177 +1,242 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
 
-const LoginSignup = () => {
-  return (
-    <>
+const socialLogins = [
+  { name: "Facebook", icon: "/images/fb.svg" },
+  { name: "Google", icon: "/images/google.svg" },
+  { name: "Apple", icon: "/images/apple.svg" },
+  { name: "email", icon: "/images/mail.svg" },
+];
+
+export default function LoginPage() {
+  const { loginWithPhone, sendOTP } = useAuth();
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [countryCode, setCountryCode] = useState("+46");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [showVerification, setShowVerification] = useState(false);
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+      await sendOTP(fullPhoneNumber);
+      setShowVerification(true);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to send verification code"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+      await loginWithPhone(fullPhoneNumber, verificationCode);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Invalid verification code"
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (provider: string) => {
+    // Implement social login logic here
+    console.log(`Logging in with ${provider}`);
+  };
+
+  if (showVerification) {
+    return (
       <div className="max-w-[768px] mx-auto w-full">
-        <div className="border-b border-solid border-grey-1100 pb-3.5 pt-6">
-          <h1 className="text-center text-base font-roboto text-black-600 font-extrabold">
-            Log in or sign up
-          </h1>
+        <div className="border-b border-solid border-grey-200 pb-3.5 pt-6 px-6">
+          <div className="flex items-center">
+            <button
+              onClick={() => setShowVerification(false)}
+              className="p-2"
+              disabled={isLoading}
+            >
+              <Image
+                src="/images/chevron-left.svg"
+                alt="Back"
+                width={24}
+                height={24}
+              />
+            </button>
+            <h1 className="flex-1 text-center text-base font-roboto font-semibold">
+              Confirm your number
+            </h1>
+          </div>
         </div>
 
-        <section className="pt-10">
-          <div className="px-6">
-            <div className="flex items-center justify-between pb-6">
-              <h2 className="text-[22px] font-semibold leading-[26px] font-roboto text-black-600">
-                Welcome to Airbnb
-              </h2>
+        <div className="px-6 pt-6">
+          <p className="text-sm mb-4">
+            Enter the code we've sent via SMS to {countryCode} {phoneNumber}:
+          </p>
+
+          <form onSubmit={handleVerificationSubmit}>
+            <div className="flex gap-2 mb-4">
+              {[...Array(6)].map((_, i) => (
+                <input
+                  key={i}
+                  type="text"
+                  maxLength={1}
+                  className="w-10 h-10 border rounded-lg text-center"
+                  value={verificationCode[i] || ""}
+                  disabled={isLoading}
+                  onChange={(e) => {
+                    const newCode = verificationCode.split("");
+                    newCode[i] = e.target.value;
+                    setVerificationCode(newCode.join(""));
+                    if (e.target.value && e.target.nextElementSibling) {
+                      (e.target.nextElementSibling as HTMLInputElement).focus();
+                    }
+                  }}
+                />
+              ))}
             </div>
 
-            <div>
-              <div className="border rounded-lg px-0 p-4">
-                <div className="relative">
-                  <select className="w-full appearance-none bg-transparent">
-                    <option>Sweden (+46)</option>
-                    <option>United States (+1)</option>
-                    <option>United Kingdom (+44)</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-6 flex items-center pointer-events-none">
-                    <Image
-                      src="/chevron-down.svg"
-                      alt="Dropdown arrow"
-                      width={14}
-                      height={8}
-                    />
-                  </div>
-                </div>
-              </div>
+            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
-              <p className="text-sm mt-2">
-                We&apos;ll call or text you to confirm your number. Standard
-                message and data rates apply.{" "}
-                <Link href="/privacy" className="font-semibold underline">
-                  Privacy Policy
-                </Link>
-              </p>
+            <button
+              type="submit"
+              className="w-full rounded-lg text-base h-12 font-roboto font-semibold text-white bg-[#FF385C] disabled:bg-gray-300"
+              disabled={verificationCode.length !== 6 || isLoading}
+            >
+              {isLoading ? "Verifying..." : "Continue"}
+            </button>
+          </form>
 
-              <button className="w-full rounded-lg text-base h-12 font-roboto font-semibold text-white flex items-center justify-center bg-blue-600 mt-4">
-                Continue
-              </button>
-
-              <div className="flex items-center pt-6 pb-4">
-                <div className="max-w-[141px] h-[1px] w-full bg-grey-600" />
-                <span className="mx-4 inline-block text-xs font-normal text-black-600 font-roboto">
-                  or
-                </span>
-                <div className="max-w-[141px] h-[1px] w-full bg-grey-600" />
-              </div>
-
-              {/* Social Login Buttons */}
-              <div className="space-y-4">
-                {[
-                  { icon: "fb.svg", text: "Continue with Facebook" },
-                  { icon: "google.svg", text: "Continue with Google" },
-                  { icon: "apple.svg", text: "Continue with Apple" },
-                  { icon: "mail.svg", text: "Continue with email" },
-                ].map((provider) => (
-                  <Link
-                    key={provider.text}
-                    href="#"
-                    className="text-center text-sm gap-[53px] text-black-600 font-roboto font-semibold rounded-lg border border-black-600 flex items-center justify-start h-12 pl-6"
-                  >
-                    <Image
-                      src={`/${provider.icon}`}
-                      alt={provider.text}
-                      width={24}
-                      height={24}
-                    />
-                    {provider.text}
-                  </Link>
-                ))}
-              </div>
-
-              <div className="pt-11 pb-8 text-center">
-                <Link
-                  href="/help"
-                  className="text-sm font-roboto text-black-600 font-semibold"
-                >
-                  Need help?
-                </Link>
-              </div>
-            </div>
+          <div className="flex justify-between items-center mt-4">
+            <button
+              className="text-sm text-gray-900 underline"
+              onClick={handlePhoneSubmit}
+              disabled={isLoading}
+            >
+              Haven't received a code?
+            </button>
+            <button className="text-sm text-gray-900 font-semibold">
+              More options
+            </button>
           </div>
-        </section>
+
+          <div className="pt-11 pb-8 text-center">
+            <Link href="/help" className="text-sm text-gray-900">
+              Need help?
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-[768px] mx-auto w-full">
+      <div className="border-b border-solid border-grey-200 pb-3.5 pt-6">
+        <h1 className="text-center text-base font-roboto font-semibold">
+          Log in or sign up
+        </h1>
       </div>
 
-      {/* Footer */}
-      <footer className="max-w-[1360px] mx-auto">
-        <div className="flex items-center justify-between w-full px-[26px]">
-          <div className="flex items-center gap-4">
-            <span>© {new Date().getFullYear()} Airbnb, Inc.</span>
-            {[
-              "Privacy",
-              "Terms",
-              "Sitemap",
-              "Company details",
-              "Destinations",
-            ].map((item) => (
-              <Link key={item} href="#" className="text-grey-700">
-                {item}
-              </Link>
-            ))}
+      <div className="px-6 pt-6">
+        <h2 className="text-[22px] font-semibold leading-[26px] font-roboto text-black-600 mb-6">
+          Welcome to Airbnb
+        </h2>
+
+        <form onSubmit={handlePhoneSubmit}>
+          <div className="border rounded-lg">
+            <div className="relative border-b">
+              <select
+                className="w-full p-4 appearance-none bg-transparent"
+                value={countryCode}
+                onChange={(e) => setCountryCode(e.target.value)}
+                disabled={isLoading}
+              >
+                <option value="+46">Sweden (+46)</option>
+                <option value="+1">United States (+1)</option>
+                <option value="+44">United Kingdom (+44)</option>
+              </select>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                <Image
+                  src="/images/chevron-down.svg"
+                  alt=""
+                  width={14}
+                  height={8}
+                />
+              </div>
+            </div>
+            <input
+              type="tel"
+              placeholder="Phone number"
+              className="w-full p-4 bg-transparent"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              disabled={isLoading}
+            />
           </div>
 
-          <div className="flex items-center gap-4">
-            <Link href="#" className="gap-1 text-black-600 flex items-center">
-              <Image
-                src="/world-icon.svg"
-                alt="Language"
-                width={16}
-                height={16}
-              />
-              English (IN)
+          <p className="text-xs mt-2 text-gray-600">
+            We'll call or text you to confirm your number. Standard message and
+            data rates apply.{" "}
+            <Link href="/privacy" className="underline">
+              Privacy Policy
             </Link>
-            <Link href="#" className="text-black-600">
-              INR
-            </Link>
-            <Link
-              href="#"
-              className="text-black-600 flex items-center gap-[6px]"
-            >
-              Support & resources
-              <Image src="/up-arw.svg" alt="Arrow up" width={12} height={12} />
-            </Link>
-          </div>
+          </p>
+
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full rounded-lg text-base h-12 font-roboto font-semibold text-white bg-[#FF385C] mt-4 disabled:bg-gray-300"
+            disabled={!phoneNumber || isLoading}
+          >
+            {isLoading ? "Sending code..." : "Continue"}
+          </button>
+        </form>
+
+        <div className="flex items-center py-4">
+          <div className="flex-1 h-[1px] bg-gray-300"></div>
+          <span className="mx-4 text-xs text-gray-500">or</span>
+          <div className="flex-1 h-[1px] bg-gray-300"></div>
         </div>
 
-        {/* Mobile Navigation */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t">
-          <div className="flex justify-around py-2">
-            {[
-              { icon: "ftr-icon1.svg", label: "Explore" },
-              { icon: "ftr-icon2.svg", label: "Trips" },
-              { icon: "ftr-icon3.svg", label: "Inbox" },
-              { icon: "ftr-icon4.svg", label: "Profile" },
-            ].map((item) => (
-              <Link key={item.label} href="#" className="text-center">
-                <div className="relative">
-                  <Image
-                    src={`/${item.icon}`}
-                    alt={item.label}
-                    width={24}
-                    height={24}
-                    className="mx-auto mb-[7px]"
-                  />
-                  {item.label === "Inbox" && (
-                    <Image
-                      src="/small-box.svg"
-                      alt="Notification"
-                      width={8}
-                      height={8}
-                      className="absolute -top-1 -right-2"
-                    />
-                  )}
-                </div>
-                <span className="text-xs">{item.label}</span>
-              </Link>
-            ))}
-          </div>
-        </nav>
-      </footer>
-    </>
-  );
-};
+        <div className="space-y-3">
+          {socialLogins.map((provider) => (
+            <button
+              key={provider.name}
+              onClick={() => handleSocialLogin(provider.name)}
+              className="w-full h-12 border border-gray-300 rounded-lg flex items-center px-6"
+              disabled={isLoading}
+            >
+              <Image src={provider.icon} alt="" width={24} height={24} />
+              <span className="flex-1 text-center text-sm font-medium">
+                Continue with {provider.name}
+              </span>
+            </button>
+          ))}
+        </div>
 
-export default LoginSignup;
+        <div className="pt-11 pb-8 text-center">
+          <Link href="/help" className="text-sm text-gray-900">
+            Need help?
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

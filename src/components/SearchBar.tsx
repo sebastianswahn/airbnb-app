@@ -13,7 +13,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
   const [guests, setGuests] = useState(1);
-  const [showExtras, setShowExtras] = useState(false); // Toggle state for extra fields
+  const [showExtras, setShowExtras] = useState(false);
 
   const handleSearch = () => {
     const fullQuery = {
@@ -33,7 +33,6 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch }) => {
 
   return (
     <div className="flex flex-col space-y-2 border rounded-full shadow-lg px-4 py-2 bg-white">
-      {/* Main Search Input */}
       <div className="flex items-center">
         <button
           onClick={handleSearch}

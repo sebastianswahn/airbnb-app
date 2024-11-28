@@ -1,67 +1,119 @@
-// app/page.tsx
-import { Suspense } from 'react'
-import Header from '@/components/Header'
-import SearchSection from '../components/SearchSection'
-import ListingGrid from '@/components/istingGrid'
-import Footer from '@/components/Footer'
-import { AuthCheck } from '@/components/AuthCheck'
+"use client";
 
-async function getListings() {
-  try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/listings`, {
-      cache: 'no-store'
-    })
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch listings')
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import ListingGallery from "@/components/listings/ListingGallery";
+import SearchBar from "@/components/SearchBar";
+import Filters from "@/components/Filters";
+import ListingCard from "@/components/listings/ListingCard";
+import PriceToggle from "@/components/PriceToggle";
+import type { Listing } from "@/types/listing";
+
+export default function LandingPage() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const [showTotalPrice, setShowTotalPrice] = useState(false);
+  const [listings, setListings] = useState<Listing[]>([]);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/login");
+      return;
     }
-    
-    return response.json()
-  } catch (error) {
-    console.error('Error fetching listings:', error)
-    return []
-  }
-}
+  }, [user, isLoading, router]);
 
-export default async function LandingPage() {
-  const listings = await getListings()
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch("/api/listings", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) {
+          throw new Error("Failed to fetch listings");
+        }
+        const data = await response.json();
+        setListings(data);
+      } catch (error) {
+        console.error("Error fetching listings:", error);
+      }
+    };
 
-  return (
-    <AuthCheck>
-      <div className="min-h-screen bg-gray-100">
-        <Header />
-        <main>
-          <SearchSection />
-          <section className="section md:bg-black/15 bg-skyblue-600 pt-10 xl:pb-[151px] md:pb-[100px] pb-[50px]">
-            <div className="max-w-[1360px] px-[26px] w-full mx-auto">
-              <Suspense fallback={<ListingsLoadingSkeleton />}>
-                <ListingGrid initialListings={listings} />
-              </Suspense>
-            </div>
-          </section>
-        </main>
-        <Footer />
+    if (user) {
+      fetchListings();
+    }
+  }, [user]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
       </div>
-    </AuthCheck>
-  )
-}
+    );
+  }
 
-function ListingsLoadingSkeleton() {
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="grid lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2 grid-cols-1 gap-x-5 xl:gap-y-9 gap-y-5">
-      {[...Array(12)].map((_, i) => (
-        <div 
-          key={i}
-          className="animate-pulse bg-white rounded-xl p-4"
-        >
-          <div className="bg-gray-200 h-64 rounded-lg" />
-          <div className="mt-4 space-y-2">
-            <div className="h-4 bg-gray-200 rounded w-3/4" />
-            <div className="h-4 bg-gray-200 rounded w-1/2" />
-            <div className="h-4 bg-gray-200 rounded w-1/4" />
+    <div className="min-h-screen bg-white">
+      <header className="border-b border-gray-200">
+        <div className="max-w-[1360px] mx-auto px-6">
+          <div className="hidden md:block py-5">
+            {/* Desktop Header */}
+            <div className="flex items-center justify-between">
+              <SearchBar onSearch={(query) => console.log(query)} />
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => router.push("/host/homes")}
+                  className="text-sm font-medium hover:bg-gray-50 rounded-full px-4 py-2"
+                >
+                  Airbnb your home
+                </button>
+                <button
+                  onClick={() => router.push("/account-settings")}
+                  className="flex items-center gap-2 border rounded-full p-2 hover:shadow-md transition"
+                >
+                  <div className="h-8 w-8 rounded-full overflow-hidden">
+                    <img
+                      src="/images/default-avatar.png"
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      ))}
+      </header>
+
+      <main>
+        <div className="max-w-[1360px] mx-auto px-6 py-8">
+          <div className="flex flex-col gap-6">
+            <Filters />
+            <div className="flex items-center justify-end">
+              <PriceToggle
+                showTotal={showTotalPrice}
+                setShowTotal={setShowTotalPrice}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {listings.map((listing) => (
+                <ListingCard
+                  key={listing._id}
+                  listing={listing}
+                  showTotalPrice={showTotalPrice}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
-  )
+  );
 }

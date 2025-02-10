@@ -6,3 +6,61 @@ body {
   background: #ffffff;
   color: #222222;
 }
+@keyframes swipe-hint {
+  0% {
+    transform: translateX(-10px);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(10px);
+    opacity: 0;
+  }
+}
+.review-button-prev.swiper-button-disabled,
+.review-button-next.swiper-button-disabled {
+  opacity: 0;
+  cursor: default;
+}
+
+.swiper-slide {
+  height: auto !important;
+}
+
+@keyframes fade-out {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-swipe-hint {
+  animation: swipe-hint 1.5s ease-in-out infinite;
+}
+
+.animate-fade-out {
+  animation: fade-out 3s ease-in-out forwards;
+}
+
+.swiper-button-next,
+.swiper-button-prev {
+  &::after {
+    display: none;
+  }
+}
+
+.swiper-pagination {
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.group:hover .swiper-button-next,
+.group:hover .swiper-button-prev {
+  opacity: 1;
+}

@@ -1,69 +1,74 @@
-import dbConnect from "../../../utils/db";
-import Listing from "../../../models/listing";
-import User from "../../../models/user";
-import { authenticate } from "../../../middleware/auth";
+import { NextResponse } from "next/server";
+import dbConnect from "@/utils/db";
+import Listing from "@/models/listing";
+import Review from "@/models/review";
+import User from "@/models/user";
 
-// Hanterar GET-förfrågningar
-export async function GET(req) {
-  await dbConnect();
-
+export async function GET() {
   try {
-    const listings = await Listing.find().populate("host");
-    return new Response(JSON.stringify(listings), { status: 200 });
-  } catch (error) {
-    console.error("Error fetching listings:", error); // Mer detaljerad felsökning
-    return new Response(JSON.stringify({ error: "Unable to fetch listings" }), {
-      status: 500,
-    });
-  }
-}
+    await dbConnect();
+    console.log("DB Connected successfully");
 
-// Hanterar POST-förfrågningar
-export async function POST(req) {
-  await dbConnect();
+    // Fetch all listings first
+    const listings = await Listing.find()
+      .populate("host", "name avatar") // Populate basic host info
+      .sort({ createdAt: -1 })
+      .lean(); // Use lean() for better performance
 
-  try {
-    const authResponse = await authenticate(req);
-    if (authResponse) return authResponse;
+    // Get all listing IDs
+    const listingIds = listings.map((listing) => listing._id);
 
-    const { id: userId, role } = req.user;
+    // Fetch all reviews for these listings in a single query
+    const reviews = await Review.find({
+      listing: { $in: listingIds },
+    }).lean();
 
-    if (role !== "host") {
-      return new Response(
-        JSON.stringify({ error: "Only hosts can create listings" }),
-        { status: 403 } // Forbidden
+    // Group reviews by listing
+    const reviewsByListing = reviews.reduce((acc, review) => {
+      const listingId = review.listing.toString();
+      if (!acc[listingId]) {
+        acc[listingId] = [];
+      }
+      acc[listingId].push(review);
+      return acc;
+    }, {});
+
+    // Add review data to listings
+    const listingsWithReviews = listings.map((listing) => {
+      const listingId = listing._id.toString();
+      const listingReviews = reviewsByListing[listingId] || [];
+
+      // Calculate average rating
+      const totalRating = listingReviews.reduce(
+        (sum, review) => sum + review.rating,
+        0
       );
-    }
+      const averageRating =
+        listingReviews.length > 0
+          ? Number((totalRating / listingReviews.length).toFixed(2))
+          : 0;
 
-    const body = await req.json();
-
-    // Validering för obligatoriska fält
-    const { name, description, location, price, images } = body;
-    if (!name || !description || !location || !price) {
-      return new Response(
-        JSON.stringify({
-          error: "Name, description, location, and price are required",
-        }),
-        { status: 400 } // Bad Request
-      );
-    }
-
-    const newListing = new Listing({
-      name,
-      description,
-      location,
-      price,
-      images,
-      host: userId,
+      return {
+        ...listing,
+        _id: listing._id.toString(),
+        host: listing.host
+          ? {
+              _id: listing.host._id.toString(),
+              name: listing.host.name,
+              avatar: listing.host.avatar,
+            }
+          : null,
+        rating: averageRating,
+        reviewCount: listingReviews.length,
+      };
     });
 
-    await newListing.save();
-
-    return new Response(JSON.stringify(newListing), { status: 201 });
+    return NextResponse.json(listingsWithReviews);
   } catch (error) {
-    console.error("Error creating listing:", error); // Mer detaljerad felsökning
-    return new Response(JSON.stringify({ error: "Unable to create listing" }), {
-      status: 500,
-    });
+    console.error("Server error:", error);
+    return NextResponse.json(
+      { error: "Server error", details: error.message },
+      { status: 500 }
+    );
   }
 }

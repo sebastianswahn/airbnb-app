@@ -8,7 +8,7 @@ const nextConfig = {
     return config;
   },
   images: {
-    domains: ["your-image-domain.com"],
+    domains: ["images.unsplash.com", "scontent.fbma4-1.fna.fbcdn.net"], // Updated this line
   },
   experimental: {
     appDir: true,

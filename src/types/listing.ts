@@ -12,42 +12,48 @@ export interface Host {
   description?: string;
 }
 
-export interface Review {
-  id: string;
-  author: {
-    name: string;
-    image: string;
-  };
-  date: string;
-  content: string;
-  rating: number;
-}
-
 export interface Amenity {
   icon: string;
   name: string;
   description?: string;
 }
 
+export interface Review {
+  _id: string;
+  listing?: string; // ObjectId as string
+  host?: string; // ObjectId as string
+  user: string; // ObjectId as string
+  author: {
+    // This comes from populating the user field
+    name: string;
+    image: string;
+  };
+  rating: number;
+  text: string; // This maps to 'text' in the database
+  date: string; // This comes from timestamps
+}
 export interface Listing {
   _id: string;
-  title: string;
-  location: string;
+  name: string;
   description: string;
-  images: string[];
+  location: string;
   price: number;
-  rating: number;
-  reviews: Review[];
-  reviewCount: number;
-  host: Host;
-  amenities: Amenity[];
-  maxGuests: number;
+  host: {
+    _id: string;
+    name: string;
+    avatar?: string;
+  };
+  images: string[];
+  type: "Villa" | "Apartment" | "House" | "Cabin";
   bedrooms: number;
-  beds: number;
-  baths: number;
-  features: Array<{
-    icon: string;
-    title: string;
-    description: string;
-  }>;
+  bathrooms: number;
+  maxGuests: number;
+  amenities: string[];
+  coordinates: {
+    latitude: number;
+    longitude: number;
+  };
+  rating?: number;
+  reviewCount?: number;
+  dates?: string;
 }

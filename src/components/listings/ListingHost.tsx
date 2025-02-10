@@ -1,118 +1,68 @@
-import Image from "next/image";
+"use client";
+
+import React from "react";
 
 interface ListingHostProps {
   name: string;
   image: string;
   joinedDate: string;
-  stats?: {
-    totalReviews?: number;
-    responseRate?: number;
-    responseTime?: string;
-    isSuperhost?: boolean;
-  };
-  languages?: string[];
-  description?: string;
 }
 
-export default function ListingHost({
+const ListingHost: React.FC<ListingHostProps> = ({
   name,
   image,
   joinedDate,
-  stats,
-  languages,
-  description,
-}: ListingHostProps) {
+}) => {
   return (
-    <div className="py-8 border-b border-grey-600">
-      <div className="flex items-center justify-between pb-8">
-        <h2 className="text-[22px] leading-[26px] text-black-600 font-roboto font-semibold">
-          Hosted by {name}
-        </h2>
-        <Image
+    <div className="my-20">
+      <div className="flex items-center px-4 justify-between">
+        <div className="flex-1">
+          <h2 className="text-3xl pb-2 font-bold">Hosted by {name}</h2>
+          <p className="text-md py-4 text-gray-500">{joinedDate}</p>
+        </div>
+        <img
           src={image}
           alt={name}
-          width={48}
-          height={48}
-          className="rounded-full"
+          className="w-12 h-12 rounded-full object-cover"
         />
       </div>
 
-      <div className="border-b border-grey-600 pb-6">
-        <div className="flex gap-4 mb-4">
-          {stats?.totalReviews && (
-            <div className="flex items-center gap-2">
-              <Image
-                src="/images/star.svg"
-                alt="Reviews"
-                width={16}
-                height={16}
-              />
-              <span>{stats.totalReviews} Reviews</span>
-            </div>
-          )}
-          {stats?.isSuperhost && (
-            <div className="flex items-center gap-2">
-              <Image
-                src="/images/badge.svg"
-                alt="Superhost"
-                width={16}
-                height={16}
-              />
-              <span>Superhost</span>
-            </div>
-          )}
+      <div className="p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">★</span>
+          <span className="text-lg">165 Reviews</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">✓</span>
+          <span className="text-lg">Identity verified</span>
+        </div>
+      </div>
+
+      <div className="pt-2 p-4">
+        <div>
+          <h3 className="font-semibold pb-2 text-xl mb-1">During your stay</h3>
+          <p className="text-lg">
+            Our caretaker at the property will ensure you have a memorable stay.
+          </p>
         </div>
 
-        <p className="text-base font-normal font-roboto text-black-600 pb-4">
-          Joined in {joinedDate}
-        </p>
-
-        {description && (
-          <>
-            <p className="text-base font-normal font-roboto text-black-600 pb-2">
-              {description}
-            </p>
-            <button className="text-base text-black-600 font-semibold font-roboto underline">
-              Show more
-            </button>
-          </>
-        )}
+        <div className="space-y-1 py-4 text-lg">
+          <p>Languages: English, हिंदी</p>
+          <p>Response rate: 82%</p>
+          <p>Response time: within a few hours</p>
+        </div>
       </div>
 
-      <div className="py-4 space-y-4">
-        {stats?.responseRate && (
-          <div>
-            <p>Response rate: {stats.responseRate}%</p>
-          </div>
-        )}
-        {stats?.responseTime && (
-          <div>
-            <p>Response time: {stats.responseTime}</p>
-          </div>
-        )}
-        {languages && languages.length > 0 && (
-          <div>
-            <p>Languages: {languages.join(", ")}</p>
-          </div>
-        )}
-      </div>
-
-      <button className="mt-6 text-base text-black-600 font-semibold font-roboto h-12 flex items-center justify-center rounded-lg border border-solid border-black-600 bg-white w-full">
+      <button className="w-full border border-black font-bold rounded-lg py-3 text-xl mt-2">
         Contact host
       </button>
 
-      <div className="flex items-center justify-between pt-5">
-        <p className="text-sm text-gray-600">
-          To protect your payment, never transfer money or communicate outside
-          of the Airbnb website or app.
-        </p>
-        <Image
-          src="/images/protect-icon.svg"
-          alt="Protection"
-          width={24}
-          height={24}
-        />
-      </div>
+      <p className="text-sm text-gray-500 pt-2">
+        To protect your payment, never transfer money or communicate outside of
+        the the application
+      </p>
     </div>
   );
-}
+};
+
+export default ListingHost;

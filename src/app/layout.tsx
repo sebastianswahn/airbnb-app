@@ -9,15 +9,22 @@ const roboto = Roboto({
   variable: "--font-roboto",
 });
 
+export const metadata = {
+  title: "Airbnb Clone",
+  description: "Your home away from home",
+};
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${roboto.variable} font-roboto antialiased`}>
-        <AuthProvider>{children}</AuthProvider>
+    <html lang="en" className={roboto.variable}>
+      <body className="font-roboto antialiased min-h-screen bg-white relative">
+        <AuthProvider>
+          <div className="flex flex-col min-h-screen">{children}</div>
+        </AuthProvider>
       </body>
     </html>
   );

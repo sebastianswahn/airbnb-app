@@ -1,126 +1,73 @@
-"use client";
-
-import { useState } from "react";
+import React from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Navigation, Pagination } from "swiper/modules";
-import "swiper/css";
-import "swiper/css/navigation";
-import "swiper/css/pagination";
+import { useRouter } from "next/navigation";
+import { IMAGES } from "@/constants/images";
+import { ListingCardProps } from "@/types/components";
 
-interface ListingCardProps {
-  listing: {
-    _id: string;
-    title: string;
-    location: string;
-    images: string[];
-    price: number;
-    rating?: number;
-    distance?: string;
-    availableDates?: string;
-  };
-  showTotalPrice?: boolean;
-}
-
-export default function ListingCard({
+const ListingCard: React.FC<ListingCardProps> = ({
   listing,
-  showTotalPrice = false,
-}: ListingCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
+  className = "",
+}) => {
+  const router = useRouter();
 
   return (
-    <div className="relative group">
-      <div className="relative aspect-square overflow-hidden rounded-xl">
-        <Swiper
-          modules={[Navigation, Pagination]}
-          navigation={{
-            nextEl: ".swiper-button-next",
-            prevEl: ".swiper-button-prev",
-          }}
-          pagination={{
-            clickable: true,
-            el: ".swiper-pagination",
-          }}
-          loop={true}
-          className="h-full group-hover:opacity-95 transition"
-        >
-          {listing.images.map((image, index) => (
-            <SwiperSlide key={index}>
-              <Link href={`/listings/${listing._id}`}>
-                <div className="relative w-full h-full">
-                  <Image
-                    src={image}
-                    alt={listing.title}
-                    fill
-                    className="object-cover"
-                    priority={index === 0}
-                  />
-                </div>
-              </Link>
-            </SwiperSlide>
-          ))}
-
-          <div className="swiper-pagination !bottom-2 !z-10" />
-
-          <button className="swiper-button-prev !left-2 !text-white !w-7 !h-7 !bg-black/30 rounded-full !after:text-[12px]" />
-          <button className="swiper-button-next !right-2 !text-white !w-7 !h-7 !bg-black/30 rounded-full !after:text-[12px]" />
-        </Swiper>
-
+    <article
+      onClick={() => router.push(`/${listing._id}`)}
+      className={`w-full max-w-[300px] sm:max-w-none mx-auto cursor-pointer ${className}`}
+    >
+      <div className="relative aspect-square w-full overflow-hidden rounded-xl">
+        <Image
+          src={listing.images[0] || "/images/placeholder.png"}
+          alt={listing.name}
+          fill
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+          className="object-cover"
+          priority
+        />
         <button
-          onClick={() => setIsLiked(!isLiked)}
-          className="absolute top-3 right-3 z-10 p-2 hover:scale-110 transition"
+          className="absolute top-3 right-3 p-1.5 rounded-full hover:bg-white/10 transition"
+          onClick={(e) => {
+            e.stopPropagation();
+            // Add favorite logic here
+          }}
         >
-          <Image
-            src={isLiked ? "/images/heart-filled.svg" : "/images/heart.svg"}
-            alt="Like"
-            width={24}
-            height={24}
-            className={isLiked ? "filter-none" : "filter brightness-0 invert"}
-          />
+          <Image src={IMAGES.ICONS.HEART} alt="Like" width={24} height={24} />
         </button>
       </div>
-
-      <Link href={`/listings/${listing._id}`}>
-        <div className="mt-3 space-y-1">
-          <div className="flex justify-between">
-            <h3 className="font-medium text-[15px] text-black-600">
-              {listing.location}
-            </h3>
-            {listing.rating && (
-              <div className="flex items-center gap-1">
-                <Image
-                  src="/images/star.svg"
-                  alt="Rating"
-                  width={12}
-                  height={12}
-                />
-                <span className="text-[15px]">{listing.rating}</span>
-              </div>
-            )}
-          </div>
-
-          {listing.distance && (
-            <p className="text-[15px] text-grey-700">{listing.distance}</p>
+      <div className="mt-3 w-full">
+        <div className="flex justify-between items-start">
+          <h3 className="font-medium text-[15px] flex-1 truncate pr-2">
+            {listing.location}
+          </h3>
+          {typeof listing.rating !== "undefined" && listing.rating > 0 && (
+            <div className="flex items-center gap-1 flex-shrink-0 text-[14px]">
+              <svg
+                viewBox="0 0 32 32"
+                className="h-3.5 w-3.5 fill-current"
+                aria-hidden="true"
+              >
+                <path d="M15.094 1.579l-4.124 8.885-9.86 1.27a1 1 0 0 0-.542 1.736l7.293 6.565-1.965 9.852a1 1 0 0 0 1.483 1.061L16 25.951l8.625 4.997a1 1 0 0 0 1.482-1.06l-1.965-9.853 7.293-6.565a1 1 0 0 0-.541-1.735l-9.86-1.271-4.127-8.885a1 1 0 0 0-1.814 0z" />
+              </svg>
+              <span>{listing.rating}</span>
+              {typeof listing.reviewCount !== "undefined" &&
+                listing.reviewCount > 0 && (
+                  <span className="text-gray-600">({listing.reviewCount})</span>
+                )}
+            </div>
           )}
-
-          {listing.availableDates && (
-            <p className="text-[15px] text-grey-700">
-              {listing.availableDates}
-            </p>
-          )}
-
-          <p className="text-[15px] mt-1">
-            <span className="font-semibold text-black-600">
-              ₹
-              {showTotalPrice
-                ? (listing.price * 5).toLocaleString()
-                : listing.price.toLocaleString()}
+        </div>
+        <div className="mt-1 text-gray-500">
+          <p className="text-[14px]">{listing.dates || "7-12 Jun"}</p>
+          <p className="text-[14px]">
+            <span className="text-black font-medium">
+              {listing.price.toLocaleString()} kr
             </span>{" "}
-            {showTotalPrice ? "total" : "night"}
+            night
           </p>
         </div>
-      </Link>
-    </div>
+      </div>
+    </article>
   );
-}
+};
+
+export default ListingCard;

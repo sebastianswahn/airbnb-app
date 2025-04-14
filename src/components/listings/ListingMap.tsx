@@ -23,7 +23,7 @@ const ListingMap: React.FC<ListingMapProps> = ({
   console.log("API Key:", process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY);
   console.log("Coordinates:", coordinates);
   return (
-    <div className="mt-8 rounded-lg overflow-hidden border border-gray-200">
+    <div className="my-8 rounded-lg overflow-hidden border border-gray-200">
       <div className="relative w-full h-96">
         <iframe
           width="100%"

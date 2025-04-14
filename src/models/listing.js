@@ -1,5 +1,13 @@
 import mongoose from "mongoose";
 
+// Message sub-schema for storing messages directly in listings
+const MessageSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  content: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  read: { type: Boolean, default: false }
+});
+
 const ListingSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: String,
@@ -24,6 +32,8 @@ const ListingSchema = new mongoose.Schema({
     required: true,
   },
   rating: { type: Number, default: 0 },
+  // Add messages array to store conversations
+  messages: [MessageSchema]
 });
 
 export default mongoose.models.Listing ||

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 
 const socialLogins = [
@@ -13,13 +14,38 @@ const socialLogins = [
 ];
 
 export default function LoginPage() {
-  const { loginWithPhone, sendOTP } = useAuth();
+  const router = useRouter();
+  const { loginWithPhone, sendOTP, isAuthenticated, loading } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState("+46");
   const [verificationCode, setVerificationCode] = useState("");
   const [showVerification, setShowVerification] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check if user is already authenticated
+  useEffect(() => {
+    // Only redirect after auth state is loaded and if user is authenticated
+    if (!loading && isAuthenticated) {
+      // Redirect to home page or return to the previous page
+      const redirectUrl = localStorage.getItem('redirectAfterLogin');
+      if (redirectUrl) {
+        localStorage.removeItem('redirectAfterLogin');
+        router.push(redirectUrl);
+      } else {
+        router.push('/');
+      }
+    }
+  }, [isAuthenticated, loading, router]);
+
+  // Don't render the login form if the user is authenticated and we're about to redirect
+  if (loading || isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF385C]"></div>
+      </div>
+    );
+  }
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +54,10 @@ export default function LoginPage() {
 
     try {
       const fullPhoneNumber = `${countryCode}${phoneNumber}`;
-      await sendOTP(fullPhoneNumber);
-      setShowVerification(true);
+      const success = await sendOTP(fullPhoneNumber);
+      if (success) {
+        setShowVerification(true);
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to send verification code"
@@ -46,7 +74,12 @@ export default function LoginPage() {
 
     try {
       const fullPhoneNumber = `${countryCode}${phoneNumber}`;
-      await loginWithPhone(fullPhoneNumber, verificationCode);
+      const result = await loginWithPhone(fullPhoneNumber, verificationCode);
+      
+      if (!result.success) {
+        setError(result.error || "Invalid verification code");
+      }
+      // If successful, the auth context will handle redirection
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Invalid verification code"

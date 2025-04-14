@@ -102,7 +102,7 @@ async function getListing(id: string): Promise<TransformedListing | null> {
   }
 }
 
-interface ListingDetailProps {
+interface PageProps {
   params: {
     id: string;
   };
@@ -124,9 +124,7 @@ function getAmenityIcon(name: string): string {
   return amenityMap[name] || amenityMap.default;
 }
 
-export default async function ListingDetailPage({
-  params,
-}: ListingDetailProps) {
+export default async function Page({ params }: PageProps) {
   const listing = await getListing(params.id);
 
   if (!listing || !listing._id) {
@@ -184,6 +182,7 @@ export default async function ListingDetailPage({
 
         <div className="max-w-[1360px] mx-auto px-[26px] w-full">
           <div className="flex flex-col lg:flex-row gap-8">
+            {/* Left column - Listing details */}
             <div className="lg:w-2/3">
               <Suspense fallback={<div>Loading listing info...</div>}>
                 <ListingInfo {...listingInfoProps} />
@@ -192,6 +191,7 @@ export default async function ListingDetailPage({
               <Suspense fallback={<div>Loading amenities...</div>}>
                 <ListingAmenities amenities={amenitiesWithIcons} />
               </Suspense>
+
               <Suspense fallback={<div>Loading location...</div>}>
                 <ListingMap
                   location={listing.location}
@@ -201,37 +201,43 @@ export default async function ListingDetailPage({
                 />
               </Suspense>
               <div className="lg:w-1/3">
-                <div className="sticky top-24">
-                  <Suspense fallback={<div>Loading reservation card...</div>}>
-                    <ReservationCard
-                      listing={{
-                        price: listing.price,
-                        rating: listing.rating,
-                        reviewCount: listing.reviewCount,
-                      }}
-                    />
-                  </Suspense>
-                </div>
-                <div className="mt-16">
-                  <Suspense fallback={<div>Loading reviews...</div>}>
-                    <ListingReviews
-                      reviews={listing.reviews}
-                      rating={listing.rating}
-                      reviewCount={listing.reviewCount}
-                    />
-                  </Suspense>
-                </div>
-                <Suspense fallback={<div>Loading host info...</div>}>
-                  <ListingHost
-                    name={listing.host.name}
-                    image={listing.host.avatar || IMAGES.ICONS.USER_EMPTY}
-                    joinedDate="Member since 2024"
+                <Suspense fallback={<div>Loading reservation card...</div>}>
+                  <ReservationCard
+                    listing={{
+                      price: listing.price,
+                      rating: listing.rating,
+                      reviewCount: listing.reviewCount,
+                      id: listing._id, // Pass the listing ID for booking data
+                    }}
                   />
                 </Suspense>
               </div>
+
+              <div className="mt-16">
+                <Suspense fallback={<div>Loading reviews...</div>}>
+                  <ListingReviews
+                    reviews={listing.reviews}
+                    rating={listing.rating}
+                    reviewCount={listing.reviewCount}
+                  />
+                </Suspense>
+              </div>
+
+              <Suspense fallback={<div>Loading host info...</div>}>
+  <ListingHost
+    name={listing.host.name}
+    image={listing.host.avatar || IMAGES.ICONS.USER_EMPTY}
+    joinedDate="Member since 2024"
+    hostId={listing.host._id}
+    listingId={listing._id}
+    listingName={listing.name}
+  />
+</Suspense>
+
               <div className="mt-16">
                 <ListingRules />
               </div>
+
             </div>
           </div>
         </div>

@@ -4,8 +4,10 @@ import { cookies } from "next/headers";
 import { verifyToken } from "@/utils/jwt";
 import Booking from "@/models/booking";
 
-export async function GET(request) {
+export async function GET(request, { params }) {
   try {
+    const { id } = params;
+    
     // Get token from cookies
     const cookieStore = cookies();
     const token = cookieStore.get("authToken")?.value;
@@ -33,10 +35,8 @@ export async function GET(request) {
 
     await dbConnect();
 
-    console.log("Fetching bookings for userId:", userId);
-
-    // Find all bookings for this user and populate the listing details
-    const bookings = await Booking.find({ guest: userId })
+    // Find the booking by ID
+    const booking = await Booking.findById(id)
       .populate({
         path: 'listing',
         select: 'name images location'
@@ -45,13 +45,26 @@ export async function GET(request) {
         path: 'host',
         select: 'name'
       })
-      .sort({ startDate: -1 })
       .lean();
 
-    console.log(`Found ${bookings.length} bookings`);
+    // Check if booking exists
+    if (!booking) {
+      return NextResponse.json(
+        { error: "Booking not found" },
+        { status: 404 }
+      );
+    }
 
-    // Transform dates to strings for JSON serialization
-    const formattedBookings = bookings.map(booking => ({
+    // Check if the booking belongs to the authenticated user
+    if (booking.guest.toString() !== userId) {
+      return NextResponse.json(
+        { error: "You are not authorized to view this booking" },
+        { status: 403 }
+      );
+    }
+
+    // Format the booking data
+    const formattedBooking = {
       ...booking,
       _id: booking._id.toString(),
       listing: {
@@ -67,11 +80,11 @@ export async function GET(request) {
       endDate: booking.endDate.toISOString(),
       createdAt: booking.createdAt?.toISOString(),
       updatedAt: booking.updatedAt?.toISOString()
-    }));
+    };
 
-    return NextResponse.json(formattedBookings);
+    return NextResponse.json(formattedBooking);
   } catch (error) {
-    console.error("Error in GET /api/bookings:", error);
+    console.error(`Error in GET /api/bookings/${params.id}:`, error);
     return NextResponse.json(
       { error: "Internal Server Error", details: error.message },
       { status: 500 }

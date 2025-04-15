@@ -15,7 +15,7 @@ const socialLogins = [
 
 export default function LoginPage() {
   const router = useRouter();
-  const { loginWithPhone, sendOTP, isAuthenticated, loading } = useAuth();
+  const { loginWithPhone, sendOTP, isAuthenticated, loading, user } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState("+46");
   const [verificationCode, setVerificationCode] = useState("");
@@ -23,23 +23,44 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Debug cookies function
+  const debugCookies = () => {
+    if (typeof document !== 'undefined') {
+      console.log('🍪 Current cookies on login page:', document.cookie);
+    }
+  };
+
+  // Log initial state on component mount
+  useEffect(() => {
+    console.log('🔄 Login page mounted');
+    console.log('👤 Initial auth state:', { isAuthenticated, loading, user });
+    debugCookies();
+  }, []);
+
   // Check if user is already authenticated
   useEffect(() => {
+    console.log('🔄 Auth state changed in login page:', { isAuthenticated, loading, user });
+    
     // Only redirect after auth state is loaded and if user is authenticated
     if (!loading && isAuthenticated) {
+      console.log('✅ User is authenticated, preparing redirect');
+      
       // Redirect to home page or return to the previous page
-      const redirectUrl = localStorage.getItem('redirectAfterLogin');
+      const redirectUrl = sessionStorage.getItem('redirectAfterLogin');
       if (redirectUrl) {
-        localStorage.removeItem('redirectAfterLogin');
+        console.log('🔄 Redirecting to saved URL:', redirectUrl);
+        sessionStorage.removeItem('redirectAfterLogin');
         router.push(redirectUrl);
       } else {
+        console.log('🔄 No saved redirect URL, redirecting to home');
         router.push('/');
       }
     }
-  }, [isAuthenticated, loading, router]);
+  }, [isAuthenticated, loading, router, user]);
 
   // Don't render the login form if the user is authenticated and we're about to redirect
   if (loading || isAuthenticated) {
+    console.log('⏳ Showing loading state (loading or authenticated)');
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF385C]"></div>
@@ -49,19 +70,24 @@ export default function LoginPage() {
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log(`📱 Submitting phone number: ${countryCode}${phoneNumber}`);
     setIsLoading(true);
     setError("");
 
     try {
       const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+      console.log(`📱 Sending OTP to: ${fullPhoneNumber}`);
       const success = await sendOTP(fullPhoneNumber);
+      console.log(`📱 OTP send result: ${success ? 'Success' : 'Failed'}`);
+      
       if (success) {
+        console.log('📱 Showing verification form');
         setShowVerification(true);
       }
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to send verification code"
-      );
+      const errorMessage = err instanceof Error ? err.message : "Failed to send verification code";
+      console.error('❌ Phone submit error:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -69,21 +95,31 @@ export default function LoginPage() {
 
   const handleVerificationSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log(`📱 Submitting verification code: ${verificationCode}`);
     setIsLoading(true);
     setError("");
+    debugCookies();
 
     try {
       const fullPhoneNumber = `${countryCode}${phoneNumber}`;
+      console.log(`📱 Attempting login with phone: ${fullPhoneNumber} and OTP: ${verificationCode}`);
       const result = await loginWithPhone(fullPhoneNumber, verificationCode);
+      console.log('📱 Login result:', result);
       
       if (!result.success) {
+        console.error('❌ Login failed:', result.error);
         setError(result.error || "Invalid verification code");
+      } else {
+        console.log('✅ Login successful, auth context will handle redirect');
+        // If successful, the auth context will handle redirection
       }
-      // If successful, the auth context will handle redirection
+      
+      // Check cookies after login attempt
+      setTimeout(debugCookies, 100);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Invalid verification code"
-      );
+      const errorMessage = err instanceof Error ? err.message : "Invalid verification code";
+      console.error('❌ Verification error:', errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +127,7 @@ export default function LoginPage() {
 
   const handleSocialLogin = async (provider: string) => {
     // Implement social login logic here
-    console.log(`Logging in with ${provider}`);
+    console.log(`🔄 Logging in with ${provider}`);
   };
 
   if (showVerification) {
@@ -100,7 +136,10 @@ export default function LoginPage() {
         <div className="border-b border-solid border-grey-200 pb-3.5 pt-6 px-6">
           <div className="flex items-center">
             <button
-              onClick={() => setShowVerification(false)}
+              onClick={() => {
+                console.log('🔄 Going back to phone entry');
+                setShowVerification(false);
+              }}
               className="p-2"
               disabled={isLoading}
             >
@@ -144,7 +183,9 @@ export default function LoginPage() {
               ))}
             </div>
 
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+            {error && (
+              <p className="text-red-500 text-sm mb-4">{error}</p>
+            )}
 
             <button
               type="submit"
@@ -158,7 +199,10 @@ export default function LoginPage() {
           <div className="flex justify-between items-center mt-4">
             <button
               className="text-sm text-gray-900 underline"
-              onClick={handlePhoneSubmit}
+              onClick={() => {
+                console.log('📱 Resending OTP');
+                handlePhoneSubmit;
+              }}
               disabled={isLoading}
             >
               Haven't received a code?
@@ -197,7 +241,10 @@ export default function LoginPage() {
               <select
                 className="w-full p-4 appearance-none bg-transparent"
                 value={countryCode}
-                onChange={(e) => setCountryCode(e.target.value)}
+                onChange={(e) => {
+                  console.log(`🌍 Country code changed to: ${e.target.value}`);
+                  setCountryCode(e.target.value);
+                }}
                 disabled={isLoading}
               >
                 <option value="+46">Sweden (+46)</option>

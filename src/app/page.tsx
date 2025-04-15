@@ -8,8 +8,8 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import SearchBar from "@/components/SearchBar";
 import Filters from "@/components/Filters";
 import ListingCard from "@/components/listings/ListingCard";
-import MobileNav from "@/components/MobileNav";
 import MobileSearchBar from "@/components/MobileSearchBar";
+import PageLayout from "@/components/PageLayout";
 import { IMAGES } from "@/constants/images";
 import type { Listing } from "@/types/listing";
 
@@ -19,6 +19,7 @@ export default function Home() {
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoadingListings, setIsLoadingListings] = useState<boolean>(true);
+  const [activeCategory, setActiveCategory] = useState<string>("amazing-views");
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -26,8 +27,12 @@ export default function Home() {
         const response = await fetch("/api/listings");
         if (!response.ok)
           throw new Error(`HTTP error! status: ${response.status}`);
+        
         const data = await response.json();
-        setListings(data);
+        
+        // Check if the response is an array or an object with listings property
+        const listingsData = Array.isArray(data) ? data : data.listings || [];
+        setListings(listingsData);
       } catch (error) {
         console.error("Error fetching listings:", error);
       } finally {
@@ -37,6 +42,27 @@ export default function Home() {
 
     fetchListings();
   }, []);
+
+  const handleSearchClick = () => {
+    // Navigate to search page
+    router.push("/search");
+  };
+
+  const handleFilterClick = () => {
+    // Navigate to filters/search page
+    router.push("/search");
+  };
+
+  const handleCategoryChange = (categoryId: string) => {
+    setActiveCategory(categoryId);
+    // You could filter listings based on category here
+    console.log(`Category changed to: ${categoryId}`);
+  };
+
+  const handleMapViewNavigate = () => {
+    // Navigate to map view
+    router.push("/map");
+  };
 
   const DesktopHeader = () => (
     <div className="border-b border-gray-200 bg-white">
@@ -50,7 +76,7 @@ export default function Home() {
             priority
           />
           <div className="flex-1 max-w-2xl mx-12">
-            <SearchBar onSearch={(query) => console.log(query)} />
+            <SearchBar onSearch={handleSearchClick} />
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -59,7 +85,10 @@ export default function Home() {
             >
               Airbnb your home
             </button>
-            <button className="flex items-center gap-2 border rounded-full p-1.5 hover:shadow-md transition">
+            <button 
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-2 border rounded-full p-1.5 hover:shadow-md transition"
+            >
               <Image
                 src={IMAGES.ICONS.HAMBURGER}
                 alt="Menu"
@@ -83,13 +112,11 @@ export default function Home() {
   );
 
   return (
-    <div className="flex flex-col min-h-screen bg-white relative">
+    <PageLayout>
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-50 bg-white">
         {isMobile ? (
-          <div className="px-6 pt-4">
-            <MobileSearchBar />
-          </div>
+          <MobileSearchBar onSearch={handleSearchClick} onFilterClick={handleFilterClick} />
         ) : (
           <DesktopHeader />
         )}
@@ -99,16 +126,28 @@ export default function Home() {
       <main className="flex-1 pt-16 px-6">
         {/* Filters */}
         <div className="my-4">
-          <Filters />
+          <Filters onChange={handleCategoryChange} />
         </div>
 
+        {/* Map Toggle Button (Mobile only) */}
+        {isMobile && (
+          <div className="fixed bottom-20 right-6 z-40">
+            <button 
+              onClick={handleMapViewNavigate}
+              className="bg-black text-white rounded-full px-4 py-2 text-sm font-medium shadow-lg flex items-center gap-2"
+            >
+              <span>Map</span>
+            </button>
+          </div>
+        )}
+
         {/* Listings */}
-        <div>
+        <div className="pb-20">
           {isLoadingListings ? (
             <div className="flex justify-center items-center min-h-[200px]">
-              <p>Loading listings...</p>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-          ) : (
+          ) : listings.length > 0 ? (
             <div
               className={
                 isMobile
@@ -126,12 +165,13 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-lg text-gray-500">No listings found</p>
+            </div>
           )}
         </div>
       </main>
-
-      {/* Mobile Navigation */}
-      {isMobile && <MobileNav />}
-    </div>
+    </PageLayout>
   );
 }

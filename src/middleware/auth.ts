@@ -1,6 +1,8 @@
 import { verifyToken, TokenPayload } from "../utils/jwt";
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import User from "@/models/user"; // Import User model
+import dbConnect from "@/utils/db"; // Import database connection
 
 // Extend the Request interface to include the user property
 declare global {
@@ -15,48 +17,36 @@ declare global {
 }
 
 export async function authenticate(req: Request): Promise<NextResponse | null> {
-  // Try to get token from multiple sources
+  console.log("📝 Authenticating request");
+  
+  // Try to get token from cookie (primary method)
   let token: string | undefined;
   
-  // 1. Check Authorization header (Bearer token)
-  const authHeader = req.headers.get("Authorization");
-  if (authHeader?.startsWith("Bearer ")) {
-    token = authHeader.split(" ")[1];
-  }
-  
-  // 2. If no token in header, check cookies (for browser requests)
-  if (!token) {
-    try {
-      // Use Next.js cookies API
-      const cookieStore = cookies();
-      token = cookieStore.get("authToken")?.value;
-    } catch (e) {
-      // Cookies API might not be available in all contexts
-      console.log("Could not access cookies:", e);
+  try {
+    // Use Next.js cookies API
+    const cookieStore = cookies();
+    token = cookieStore.get("authToken")?.value;
+    
+    if (token) {
+      console.log("🍪 Found auth token in cookies");
     }
+  } catch (e) {
+    // Cookies API might not be available in all contexts
+    console.log("Could not access cookies:", e);
   }
   
-  // 3. Try to parse cookies manually if Next.js cookies API fails
+  // If no token in cookie, check Authorization header (fallback)
   if (!token) {
-    const cookieHeader = req.headers.get("cookie");
-    if (cookieHeader) {
-      // Parse cookies safely with proper typing
-      const parsedCookies: Record<string, string> = {};
-      cookieHeader.split(';').forEach(cookie => {
-        const parts = cookie.trim().split('=');
-        if (parts.length === 2) {
-          const key = parts[0].trim();
-          const value = parts[1].trim();
-          parsedCookies[key] = value;
-        }
-      });
-      
-      token = parsedCookies.authToken;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+      console.log("🔑 Found auth token in Authorization header");
     }
   }
   
   // If no token found in any location
   if (!token) {
+    console.log("❌ No auth token found");
     return NextResponse.json(
       { error: "Authentication required" },
       { status: 401 }
@@ -66,9 +56,36 @@ export async function authenticate(req: Request): Promise<NextResponse | null> {
   try {
     // Verify the token
     const decoded = verifyToken(token);
+    console.log(`✅ Token verified for user ID: ${decoded.id}`);
     
-    // Convert the TokenPayload to the expected user type
-    // This handles the null vs undefined type incompatibility
+    // Optional: Connect to database and verify user still exists
+    // This adds more security but slightly more overhead
+    try {
+      await dbConnect();
+      const user = await User.findById(decoded.id).select('-password');
+      
+      if (!user) {
+        console.log(`❌ User with ID ${decoded.id} not found in database`);
+        
+        // Clear invalid cookie
+        try {
+          const cookieStore = cookies();
+          cookieStore.delete("authToken");
+        } catch (e) {
+          // Ignore cookie deletion errors
+        }
+        
+        return NextResponse.json(
+          { error: "User not found" },
+          { status: 401 }
+        );
+      }
+    } catch (dbError) {
+      // If DB check fails, still continue with token verification
+      console.warn("DB verification skipped:", dbError);
+    }
+    
+    // Attach user data to request
     req.user = {
       id: decoded.id,
       email: decoded.email === null ? undefined : decoded.email,
@@ -80,6 +97,14 @@ export async function authenticate(req: Request): Promise<NextResponse | null> {
     return null;
   } catch (error) {
     console.error("Token verification failed:", error);
+    
+    // Clear invalid cookie if possible
+    try {
+      const cookieStore = cookies();
+      cookieStore.delete("authToken");
+    } catch (e) {
+      // Ignore cookie deletion errors
+    }
     
     return NextResponse.json(
       { error: "Invalid or expired token" },

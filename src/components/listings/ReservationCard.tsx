@@ -32,6 +32,7 @@ export default function ReservationCard({ listing }: ReservationCardProps) {
   const [totalNights, setTotalNights] = useState<number>(0);
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const currentDate = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(
@@ -46,15 +47,18 @@ export default function ReservationCard({ listing }: ReservationCardProps) {
     const fetchBookedDates = async () => {
       try {
         setIsLoading(true);
+        console.log(`📡 Fetching bookings for listing ID: ${listing.id}`);
         const response = await fetch(`/api/listings/${listing.id}/bookings`);
+        
         if (response.ok) {
           const data = await response.json();
+          console.log(`📋 Fetched ${data.length} booked date ranges`);
           setBookedDates(data);
         } else {
-          console.error("Failed to fetch booked dates");
+          console.error("❌ Failed to fetch booked dates:", response.status);
         }
       } catch (error) {
-        console.error("Error fetching booked dates:", error);
+        console.error("❌ Error fetching booked dates:", error);
       } finally {
         setIsLoading(false);
       }
@@ -215,6 +219,87 @@ export default function ReservationCard({ listing }: ReservationCardProps) {
     return days;
   };
 
+  // Handle booking submission
+  const handleBooking = async () => {
+    if (selectedDates.checkIn && selectedDates.checkOut) {
+      try {
+        console.log('📝 Submitting booking...');
+        setIsSubmitting(true);
+        
+        // Submit booking
+        const bookingData = {
+          startDate: selectedDates.checkIn.toISOString(),
+          endDate: selectedDates.checkOut.toISOString(),
+          totalPrice,
+          listing: listing.id // Explicitly include the listing ID
+        };
+        
+        console.log('📋 Booking data:', bookingData);
+        
+        const response = await fetch('/api/bookings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(bookingData),
+          credentials: 'include',
+        });
+        
+        console.log('📡 Booking response status:', response.status);
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Booking was successful
+          console.log('✅ Booking successful:', data);
+          alert('Booking successful!');
+          
+          // Reset the form
+          setSelectedDates({
+            checkIn: null,
+            checkOut: null,
+          });
+          setTotalPrice(0);
+          setTotalNights(0);
+          
+          // Refresh booked dates
+          const bookingsResponse = await fetch(`/api/listings/${listing.id}/bookings`);
+          if (bookingsResponse.ok) {
+            const data = await bookingsResponse.json();
+            setBookedDates(data);
+          }
+        } else {
+          console.error('❌ Booking failed:', data);
+          
+          // Check if the error is due to authentication issues
+          if (response.status === 401 || 
+              data.error?.toLowerCase().includes('authentication') || 
+              data.error?.toLowerCase().includes('login')) {
+            // Redirect to login page
+            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
+          } else if (response.status === 409) {
+            // Conflict with existing booking
+            alert('These dates are no longer available. Please select different dates.');
+            // Refresh the available dates
+            const bookingsResponse = await fetch(`/api/listings/${listing.id}/bookings`);
+            if (bookingsResponse.ok) {
+              const data = await bookingsResponse.json();
+              setBookedDates(data);
+            }
+          } else {
+            // For other types of errors, show an alert
+            alert(`Booking failed: ${data.error || 'Unknown error'}`);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Error submitting booking:', error);
+        alert('An error occurred while submitting your booking. Please try again.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
   return (
     <div className="w-full bg-white border border-gray-200 rounded-lg shadow-lg p-4" data-component="reservation-card">
       <div className="text-center mb-4">
@@ -304,75 +389,17 @@ export default function ReservationCard({ listing }: ReservationCardProps) {
       </div>
 
       <button
-        onClick={async () => {
-          if (selectedDates.checkIn && selectedDates.checkOut) {
-            try {
-              // Submit booking
-              const bookingData = {
-                startDate: selectedDates.checkIn.toISOString(),
-                endDate: selectedDates.checkOut.toISOString(),
-                totalPrice,
-                listing: listing.id // Explicitly include the listing ID
-              };
-              
-              const response = await fetch(`/api/bookings`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(bookingData),
-                credentials: 'include',
-              });
-              
-              if (response.ok) {
-                // Booking was successful
-                alert('Booking successful!');
-                
-                // Reset the form
-                setSelectedDates({
-                  checkIn: null,
-                  checkOut: null,
-                });
-                setTotalPrice(0);
-                setTotalNights(0);
-                
-                // Refresh booked dates
-                const bookingsResponse = await fetch(`/api/listings/${listing.id}/bookings`);
-                if (bookingsResponse.ok) {
-                  const data = await bookingsResponse.json();
-                  setBookedDates(data);
-                }
-              } else {
-                const error = await response.json();
-                
-                // Check if the error is due to authentication issues
-                if (response.status === 401 || 
-                    error.error?.toLowerCase().includes('token') || 
-                    error.error?.toLowerCase().includes('auth') ||
-                    error.error?.toLowerCase().includes('login')) {
-                  // Redirect to login page
-                  window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
-                } else {
-                  // For other types of errors, show an alert
-                  alert(`Booking failed: ${error.error || 'Unknown error'}`);
-                }
-              }
-            } catch (error) {
-              console.error('Error submitting booking:', error);
-              alert('An error occurred while submitting your booking. Please try again.');
-            }
-          }
-        }}
-        disabled={!selectedDates.checkIn || !selectedDates.checkOut}
+        onClick={handleBooking}
+        disabled={!selectedDates.checkIn || !selectedDates.checkOut || isSubmitting}
         className={`w-full py-3 rounded-lg font-semibold text-white
           ${
-            selectedDates.checkIn && selectedDates.checkOut
+            selectedDates.checkIn && selectedDates.checkOut && !isSubmitting
               ? "bg-blue-600 hover:bg-blue-700"
               : "bg-blue-300 cursor-not-allowed"
           }
           transition-colors`}
       >
-        Reserve
+        {isSubmitting ? "Processing..." : "Reserve"}
       </button>
 
       <div className="mt-4 text-center">

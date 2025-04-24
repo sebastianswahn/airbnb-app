@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { useAuth } from "@/context/AuthContext";
-import { IMAGES } from "@/constants/images";
 
 // Type definitions
 interface Booking {
@@ -15,7 +14,7 @@ interface Booking {
     name: string;
     images: string[];
     location: string;
-    price: number;
+    price?: number | string;
   };
   host: {
     _id: string;
@@ -24,7 +23,7 @@ interface Booking {
   };
   startDate: string;
   endDate: string;
-  totalPrice: number;
+  totalPrice?: number | string;
   status: string;
   guests: number;
   message?: string;
@@ -36,6 +35,7 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [bookingDate, setBookingDate] = useState<string>(format(new Date(), "MMM d, yyyy"));
   
   const router = useRouter();
   const { isAuthenticated, fetchWithAuth } = useAuth();
@@ -51,6 +51,7 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
     const fetchBooking = async () => {
       try {
         setLoading(true);
+        console.log(`Fetching booking with ID: ${params.id}`);
         const response = await fetchWithAuth(`/api/bookings/${params.id}`);
         
         if (!response?.ok) {
@@ -58,7 +59,20 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
         }
         
         const data = await response.json();
+        console.log("Booking data received:", JSON.stringify(data, null, 2));
         setBooking(data);
+        
+        // Set booking date - either from API or fallback to current date
+        if (data && data.createdAt) {
+          try {
+            setBookingDate(format(parseISO(data.createdAt), "MMM d, yyyy"));
+          } catch (err) {
+            console.error("Error parsing booking date:", err);
+            setBookingDate(format(new Date(), "MMM d, yyyy"));
+          }
+        } else {
+          setBookingDate(format(new Date(), "MMM d, yyyy"));
+        }
       } catch (err) {
         console.error("Error fetching booking:", err);
         setError("Unable to load booking details. Please try again later.");
@@ -70,17 +84,36 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
     fetchBooking();
   }, [params.id, router, isAuthenticated, fetchWithAuth]);
   
-  // Format date for display
+  // Format date for display - with validation
   const formatDate = (dateString: string): string => {
-    return format(new Date(dateString), "EEE, MMM d, yyyy");
+    try {
+      // Ensure the dateString is valid before parsing
+      if (!dateString) return "Invalid date";
+      return format(parseISO(dateString), "EEE, MMM d, yyyy");
+    } catch (err) {
+      console.error("Error formatting date:", err);
+      return "Invalid date";
+    }
   };
   
-  // Calculate number of nights
+  // Safe number parser for price values
+  const safeParseNumber = (value: any): number => {
+    if (value === null || value === undefined) return 0;
+    const parsed = Number(value);
+    return isNaN(parsed) ? 0 : parsed;
+  };
+  
+  // Calculate number of nights with validation
   const calculateNights = (startDate: string, endDate: string): number => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    try {
+      const start = parseISO(startDate);
+      const end = parseISO(endDate);
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    } catch (err) {
+      console.error("Error calculating nights:", err);
+      return 0;
+    }
   };
   
   if (loading) {
@@ -107,8 +140,11 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
     );
   }
   
-  const nights = calculateNights(booking.startDate, booking.endDate);
-  
+  // Only calculate nights if both dates are valid
+  const nights = booking.startDate && booking.endDate 
+    ? calculateNights(booking.startDate, booking.endDate) 
+    : 0;
+    
   return (
     <div className="min-h-screen bg-white">
       {/* Back button */}
@@ -181,7 +217,7 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
               </div>
               <div>
                 <p className="text-gray-600 text-sm">Booking date</p>
-                <p>{format(new Date(booking.createdAt), "MMM d, yyyy")}</p>
+                <p>{bookingDate}</p>
               </div>
               <div>
                 <p className="text-gray-600 text-sm">Guests</p>
@@ -196,18 +232,9 @@ export default function BookingConfirmationPage({ params }: { params: { id: stri
           
           <div className="border-t border-gray-200 pt-4 mb-6">
             <h3 className="font-semibold mb-3">Payment summary</h3>
-            <div className="flex justify-between mb-2">
-              <span className="text-gray-600">{booking.listing.price} SEK × {nights} nights</span>
-              <span>{booking.listing.price * nights} SEK</span>
-            </div>
-            <div className="flex justify-between mb-2">
-              <span className="text-gray-600">Service fee</span>
-              <span>{Math.round(booking.totalPrice * 0.15)} SEK</span>
-            </div>
-            <div className="flex justify-between font-semibold border-t border-gray-200 pt-2 mt-2">
-              <span>Total (SEK)</span>
-              <span>{booking.totalPrice} SEK</span>
-            </div>
+            <p className="text-sm text-blue-600 mb-4">
+              For detailed price information, please view the full trip details.
+            </p>
           </div>
           
           {booking.message && (

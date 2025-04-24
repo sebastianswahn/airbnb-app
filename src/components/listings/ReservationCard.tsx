@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Calendar } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 interface ReservationCardProps {
   listing: {
@@ -33,6 +35,9 @@ export default function ReservationCard({ listing }: ReservationCardProps) {
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   const currentDate = new Date();
   const [currentMonth, setCurrentMonth] = useState<number>(
@@ -219,84 +224,37 @@ export default function ReservationCard({ listing }: ReservationCardProps) {
     return days;
   };
 
-  // Handle booking submission
-  const handleBooking = async () => {
+  // Updated booking handler to redirect to booking page
+  const handleBooking = () => {
     if (selectedDates.checkIn && selectedDates.checkOut) {
-      try {
-        console.log('📝 Submitting booking...');
-        setIsSubmitting(true);
+      setIsSubmitting(true);
+      
+      // If user is not authenticated, save booking data and redirect to login
+      if (!isAuthenticated) {
+        console.log('🔒 User not authenticated, redirecting to login');
         
-        // Submit booking
+        // Save booking data to localStorage with expiry (24 hours)
         const bookingData = {
-          startDate: selectedDates.checkIn.toISOString(),
-          endDate: selectedDates.checkOut.toISOString(),
-          totalPrice,
-          listing: listing.id // Explicitly include the listing ID
+          data: {
+            checkIn: selectedDates.checkIn.toISOString(),
+            checkOut: selectedDates.checkOut.toISOString(),
+            price: totalPrice,
+            nights: totalNights,
+            listingId: listing.id
+          },
+          expiry: Date.now() + (24 * 60 * 60 * 1000) // 24 hours
         };
         
-        console.log('📋 Booking data:', bookingData);
+        localStorage.setItem('pendingBooking', JSON.stringify(bookingData));
         
-        const response = await fetch('/api/bookings', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(bookingData),
-          credentials: 'include',
-        });
-        
-        console.log('📡 Booking response status:', response.status);
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-          // Booking was successful
-          console.log('✅ Booking successful:', data);
-          alert('Booking successful!');
-          
-          // Reset the form
-          setSelectedDates({
-            checkIn: null,
-            checkOut: null,
-          });
-          setTotalPrice(0);
-          setTotalNights(0);
-          
-          // Refresh booked dates
-          const bookingsResponse = await fetch(`/api/listings/${listing.id}/bookings`);
-          if (bookingsResponse.ok) {
-            const data = await bookingsResponse.json();
-            setBookedDates(data);
-          }
-        } else {
-          console.error('❌ Booking failed:', data);
-          
-          // Check if the error is due to authentication issues
-          if (response.status === 401 || 
-              data.error?.toLowerCase().includes('authentication') || 
-              data.error?.toLowerCase().includes('login')) {
-            // Redirect to login page
-            window.location.href = '/login?redirect=' + encodeURIComponent(window.location.pathname);
-          } else if (response.status === 409) {
-            // Conflict with existing booking
-            alert('These dates are no longer available. Please select different dates.');
-            // Refresh the available dates
-            const bookingsResponse = await fetch(`/api/listings/${listing.id}/bookings`);
-            if (bookingsResponse.ok) {
-              const data = await bookingsResponse.json();
-              setBookedDates(data);
-            }
-          } else {
-            // For other types of errors, show an alert
-            alert(`Booking failed: ${data.error || 'Unknown error'}`);
-          }
-        }
-      } catch (error) {
-        console.error('❌ Error submitting booking:', error);
-        alert('An error occurred while submitting your booking. Please try again.');
-      } finally {
-        setIsSubmitting(false);
+        // Redirect to login with return URL to booking page
+        window.location.href = `/login?redirect=${encodeURIComponent(`/listings/${listing.id}/book`)}`;
+        return;
       }
+      
+      // User is authenticated, redirect to booking page
+      console.log('📝 Proceeding to booking page...');
+      router.push(`/listings/${listing.id}/book?checkIn=${selectedDates.checkIn.toISOString()}&checkOut=${selectedDates.checkOut.toISOString()}&price=${totalPrice}&nights=${totalNights}`);
     }
   };
 

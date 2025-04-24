@@ -10,10 +10,10 @@ import ListingReviews from "@/components/listings/ListingReviews";
 import ListingMap from "@/components/listings/ListingMap";
 import ListingHost from "@/components/listings/ListingHost";
 import ReservationCard from "@/components/listings/ReservationCard";
+import DesktopListingDetail from "@/components/listings/DesktopListingDetail";
 import MobileNav from "@/components/MobileNav";
 import { IMAGES } from "@/constants/images";
 import { Listing, Host, Review, Amenity } from "@/types/listing";
-import ListingRules from "@/components/listings/ListingRules";
 
 // Extend the base Listing type
 interface TransformedListing {
@@ -41,21 +41,6 @@ interface TransformedListing {
   };
   reviewCount: number;
   reviews: Review[];
-}
-
-interface ListingInfoProps {
-  listing: {
-    host: {
-      name: string;
-      image?: string;
-    };
-    maxGuests: number;
-    bedrooms: number;
-    bathrooms: number;
-    description: string;
-    amenities: string[];
-    type: string;
-  };
 }
 
 async function getListing(id: string): Promise<TransformedListing | null> {
@@ -102,12 +87,6 @@ async function getListing(id: string): Promise<TransformedListing | null> {
   }
 }
 
-interface PageProps {
-  params: {
-    id: string;
-  };
-}
-
 function getAmenityIcon(name: string): string {
   const amenityMap: Record<string, string> = {
     WiFi: IMAGES.AMENITIES.WIFI,
@@ -124,6 +103,12 @@ function getAmenityIcon(name: string): string {
   return amenityMap[name] || amenityMap.default;
 }
 
+interface PageProps {
+  params: {
+    id: string;
+  };
+}
+
 export default async function Page({ params }: PageProps) {
   const listing = await getListing(params.id);
 
@@ -137,111 +122,112 @@ export default async function Page({ params }: PageProps) {
     name: amenity,
   }));
 
-  // Prepare listing info props to match ListingInfoProps
-  const listingInfoProps: ListingInfoProps = {
-    listing: {
-      host: {
-        name: listing.host.name,
-        image: listing.host.avatar,
-      },
-      maxGuests: listing.maxGuests,
-      bedrooms: listing.bedrooms,
-      bathrooms: listing.bathrooms,
-      description: listing.description,
-      amenities: listing.amenities,
-      type: listing.type,
-    },
-  };
-
   return (
     <div className="min-h-screen bg-white">
+      {/* Mobile View */}
       <div className="md:hidden">
         <Suspense fallback={<div>Loading mobile nav...</div>}>
           <MobileNav />
         </Suspense>
-      </div>
 
-      <div className="hidden md:block border-b border-grey-600 py-5">
-        <Suspense fallback={<div>Loading header...</div>}>
-          <ListingHeader
-            listing={{
-              title: listing.name,
-              location: listing.location,
-              reviews: listing.reviews,
-              reviewCount: listing.reviewCount,
-              rating: listing.rating,
-            }}
-          />
-        </Suspense>
-      </div>
+        <div className="hidden md:block border-b border-grey-600 py-5">
+          <Suspense fallback={<div>Loading header...</div>}>
+            <ListingHeader
+              listing={{
+                title: listing.name,
+                location: listing.location,
+                reviews: listing.reviews,
+                reviewCount: listing.reviewCount,
+                rating: listing.rating,
+              }}
+            />
+          </Suspense>
+        </div>
 
-      <main>
-        <Suspense fallback={<div>Loading gallery...</div>}>
-          <ListingGallery images={listing.images} />
-        </Suspense>
+        <main>
+          <Suspense fallback={<div>Loading gallery...</div>}>
+            <ListingGallery images={listing.images} />
+          </Suspense>
 
-        <div className="max-w-[1360px] mx-auto px-[26px] w-full">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Left column - Listing details */}
-            <div className="lg:w-2/3">
-              <Suspense fallback={<div>Loading listing info...</div>}>
-                <ListingInfo {...listingInfoProps} />
-              </Suspense>
-
-              <Suspense fallback={<div>Loading amenities...</div>}>
-                <ListingAmenities amenities={amenitiesWithIcons} />
-              </Suspense>
-
-              <Suspense fallback={<div>Loading location...</div>}>
-                <ListingMap
-                  location={listing.location}
-                  coordinates={
-                    listing.coordinates || { latitude: 0, longitude: 0 }
-                  }
-                />
-              </Suspense>
-              <div className="lg:w-1/3">
-                <Suspense fallback={<div>Loading reservation card...</div>}>
-                  <ReservationCard
+          <div className="max-w-[1360px] mx-auto px-[26px] w-full">
+            <div className="flex flex-col lg:flex-row gap-8">
+              {/* Left column - Listing details */}
+              <div className="lg:w-2/3">
+                <Suspense fallback={<div>Loading listing info...</div>}>
+                  <ListingInfo 
                     listing={{
-                      price: listing.price,
-                      rating: listing.rating,
-                      reviewCount: listing.reviewCount,
-                      id: listing._id, // Pass the listing ID for booking data
+                      host: {
+                        name: listing.host.name,
+                        image: listing.host.avatar,
+                      },
+                      maxGuests: listing.maxGuests,
+                      bedrooms: listing.bedrooms,
+                      bathrooms: listing.bathrooms,
+                      description: listing.description,
+                      amenities: listing.amenities,
+                      type: listing.type,
                     }}
                   />
                 </Suspense>
-              </div>
 
-              <div className="mt-16">
-                <Suspense fallback={<div>Loading reviews...</div>}>
-                  <ListingReviews
-                    reviews={listing.reviews}
-                    rating={listing.rating}
-                    reviewCount={listing.reviewCount}
+                <Suspense fallback={<div>Loading amenities...</div>}>
+                  <ListingAmenities amenities={amenitiesWithIcons} />
+                </Suspense>
+
+                <Suspense fallback={<div>Loading location...</div>}>
+                  <ListingMap
+                    location={listing.location}
+                    coordinates={
+                      listing.coordinates || { latitude: 0, longitude: 0 }
+                    }
+                  />
+                </Suspense>
+                <div className="w-full">
+                  <Suspense fallback={<div>Loading reservation card...</div>}>
+                    <ReservationCard
+                      listing={{
+                        price: listing.price,
+                        rating: listing.rating,
+                        reviewCount: listing.reviewCount,
+                        id: listing._id,
+                      }}
+                    />
+                  </Suspense>
+                </div>
+
+                <div className="mt-16">
+                  <Suspense fallback={<div>Loading reviews...</div>}>
+                    <ListingReviews
+                      reviews={listing.reviews}
+                      rating={listing.rating}
+                      reviewCount={listing.reviewCount}
+                    />
+                  </Suspense>
+                </div>
+
+                <Suspense fallback={<div>Loading host info...</div>}>
+                  <ListingHost
+                    name={listing.host.name}
+                    image={listing.host.avatar || IMAGES.ICONS.USER_EMPTY}
+                    joinedDate="Member since 2024"
+                    hostId={listing.host._id}
+                    listingId={listing._id}
+                    listingName={listing.name}
                   />
                 </Suspense>
               </div>
-
-              <Suspense fallback={<div>Loading host info...</div>}>
-  <ListingHost
-    name={listing.host.name}
-    image={listing.host.avatar || IMAGES.ICONS.USER_EMPTY}
-    joinedDate="Member since 2024"
-    hostId={listing.host._id}
-    listingId={listing._id}
-    listingName={listing.name}
-  />
-</Suspense>
-
-              <div className="mt-16">
-                <ListingRules />
-              </div>
-
             </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
+
+      {/* Desktop View */}
+      <Suspense fallback={<div>Loading desktop view...</div>}>
+        <DesktopListingDetail 
+          listing={listing} 
+          amenities={amenitiesWithIcons} 
+        />
+      </Suspense>
     </div>
   );
 }

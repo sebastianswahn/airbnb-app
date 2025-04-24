@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { format, addDays } from "date-fns";
+import { format, addDays, isBefore, isAfter, isSameDay, isWithinInterval } from "date-fns";
 import { DateRange } from "react-date-range";
 import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
@@ -18,6 +18,11 @@ interface DesktopReservationCardProps {
   };
 }
 
+interface BookedDateRange {
+  startDate: string;
+  endDate: string;
+}
+
 const DesktopReservationCard: React.FC<DesktopReservationCardProps> = ({
   listing
 }) => {
@@ -25,7 +30,7 @@ const DesktopReservationCard: React.FC<DesktopReservationCardProps> = ({
   const router = useRouter();
   const [showCalendar, setShowCalendar] = useState(false);
   const [guests, setGuests] = useState(1);
-  const [bookedDates, setBookedDates] = useState([]);
+  const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState({
     startDate: new Date(),
@@ -37,11 +42,15 @@ const DesktopReservationCard: React.FC<DesktopReservationCardProps> = ({
     const fetchBookedDates = async () => {
       try {
         setIsLoading(true);
+        console.log(`Fetching bookings for listing ID: ${listing.id}`);
         const response = await fetch(`/api/listings/${listing.id}/bookings`);
         
         if (response.ok) {
           const data = await response.json();
+          console.log(`Fetched ${data.length} booked date ranges`);
           setBookedDates(data);
+        } else {
+          console.error("Failed to fetch booked dates:", response.status);
         }
       } catch (error) {
         console.error("Error fetching booked dates:", error);
@@ -55,8 +64,93 @@ const DesktopReservationCard: React.FC<DesktopReservationCardProps> = ({
     }
   }, [listing.id]);
 
-  const handleDateChange = (ranges) => {
-    setDateRange(ranges.selection);
+  // Check if a specific date is already booked
+  const isDateBooked = (date: Date): boolean => {
+    // Set time to midnight for comparison
+    const dateToCheck = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+    
+    return bookedDates.some(booking => {
+      // Parse MongoDB ISO date strings
+      const startDate = new Date(booking.startDate);
+      const endDate = new Date(booking.endDate);
+      
+      // Set times to midnight for fair comparison
+      const bookingStartDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0);
+      const bookingEndDate = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 0, 0, 0, 0);
+      
+      // Check if date is within booked range (inclusive of start and end dates)
+      return (
+        isWithinInterval(dateToCheck, { 
+          start: bookingStartDate, 
+          end: bookingEndDate 
+        }) || 
+        isSameDay(dateToCheck, bookingStartDate) || 
+        isSameDay(dateToCheck, bookingEndDate)
+      );
+    });
+  };
+
+  // Create a function to determine which dates should be disabled
+  const disabledDates = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const disabledDays: Date[] = [];
+
+    // Add all dates from 2 years ago until yesterday as disabled
+    const twoYearsAgo = new Date();
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+    
+    for (let d = new Date(twoYearsAgo); d < today; d.setDate(d.getDate() + 1)) {
+      disabledDays.push(new Date(d));
+    }
+
+    // Add all booked dates as disabled
+    const nextYear = new Date();
+    nextYear.setFullYear(nextYear.getFullYear() + 1);
+    
+    for (let d = new Date(today); d <= nextYear; d.setDate(d.getDate() + 1)) {
+      if (isDateBooked(new Date(d))) {
+        disabledDays.push(new Date(d));
+      }
+    }
+
+    return disabledDays;
+  }, [bookedDates]);
+
+  // Function to validate if a date range is valid (no booked dates in between)
+  const isValidRange = (start: Date, end: Date): boolean => {
+    if (!start || !end) return false;
+    
+    // Check each day in the range
+    const startTime = start.getTime();
+    const endTime = end.getTime();
+    
+    for (let time = startTime; time <= endTime; time += 86400000) { // 86400000 = 1 day in ms
+      if (isDateBooked(new Date(time))) {
+        return false;
+      }
+    }
+    
+    return true;
+  };
+
+  const handleDateChange = (ranges: any) => {
+    const { startDate, endDate } = ranges.selection;
+    
+    // Check if the selected range is valid (no booked dates within the range)
+    if (isValidRange(startDate, endDate)) {
+      setDateRange(ranges.selection);
+    } else {
+      // If not valid, reset the end date to be the same as start date
+      setDateRange({
+        ...ranges.selection,
+        endDate: ranges.selection.startDate
+      });
+      
+      // Alert the user
+      alert("Some dates in this range are already booked. Please select a different range.");
+    }
   };
 
   // Calculate the number of nights between the selected dates
@@ -135,7 +229,12 @@ const DesktopReservationCard: React.FC<DesktopReservationCardProps> = ({
         </div>
       </div>
       
-      {showCalendar && (
+      {isLoading ? (
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-sm text-gray-500 mt-2">Loading availability...</p>
+        </div>
+      ) : showCalendar && (
         <div className="mb-4">
           <DateRange
             editableDateInputs={true}
@@ -143,16 +242,24 @@ const DesktopReservationCard: React.FC<DesktopReservationCardProps> = ({
             moveRangeOnFirstSelection={false}
             ranges={[dateRange]}
             minDate={new Date()}
+            disabledDates={disabledDates}
             className="w-full"
           />
+          <div className="flex mt-2 items-center text-xs text-gray-500">
+            <div className="w-3 h-3 bg-gray-200 rounded-full mr-1"></div>
+            <span className="mr-3">Booked dates</span>
+            <div className="w-3 h-3 bg-blue-600 rounded-full mr-1"></div>
+            <span>Selected dates</span>
+          </div>
         </div>
       )}
       
       <button
         onClick={handleBooking}
-        className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-lg transition"
+        disabled={isLoading}
+        className={`w-full ${isLoading ? 'bg-gray-300' : 'bg-blue-600 hover:bg-blue-700'} text-white font-semibold py-3 rounded-lg transition`}
       >
-        Reserve
+        {isLoading ? "Loading..." : "Reserve"}
       </button>
       
       <div className="mt-4">

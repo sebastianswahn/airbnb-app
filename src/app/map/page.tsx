@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import PageLayout from "@/components/PageLayout";
-import ListingCard from "@/components/listings/ListingCard"; // Add this import
+import ListingCard from "@/components/listings/ListingCard";
 import { IMAGES } from "@/constants/images";
 import type { Listing } from "@/types/listing";
 
@@ -35,6 +35,7 @@ export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const googleMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
+  const listingsContainerRef = useRef<HTMLDivElement>(null);
   
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -71,7 +72,7 @@ export default function MapPage() {
   
   // Initialize map when mapLoaded changes or listings are loaded
   useEffect(() => {
-    if (mapLoaded && mapRef.current && listings.length > 0 && !listView) {
+    if (mapLoaded && mapRef.current && listings.length > 0) {
       // Clear any existing map
       if (googleMapRef.current) {
         markersRef.current.forEach(marker => {
@@ -85,7 +86,7 @@ export default function MapPage() {
         initializeMap();
       }, 100);
     }
-  }, [mapLoaded, listings, listView]);
+  }, [mapLoaded, listings]);
   
   const fetchListings = async () => {
     try {
@@ -373,7 +374,7 @@ export default function MapPage() {
     <PageLayout>
       <div className="w-full h-screen relative">
         {/* Search Bar */}
-        <div className="fixed top-0 left-0 right-0 z-10 bg-white p-4 border-b border-gray-200">
+        <div className="fixed top-0 left-0 right-0 z-20 bg-white p-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <button onClick={handleHomeClick} className="p-2">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -395,17 +396,33 @@ export default function MapPage() {
           </div>
         </div>
         
-        {/* Map or List View */}
-        {!listView ? (
-          /* Map View */
-          <div 
-            ref={mapRef} 
-            className="w-full h-full pt-16"
-            style={{ visibility: loading && !mapLoaded ? "hidden" : "visible" }}
-          ></div>
-        ) : (
-          /* List View */
-          <div className="pt-16 px-6 pb-20">
+        {/* Map (always present) */}
+        <div 
+          ref={mapRef} 
+          className="w-full h-full pt-16"
+          style={{ 
+            visibility: loading && !mapLoaded ? "hidden" : "visible",
+            zIndex: 1
+          }}
+        ></div>
+        
+        {/* Sliding List View Panel */}
+        <div 
+          ref={listingsContainerRef}
+          className={`fixed bottom-0 left-0 right-0 bg-white shadow-lg rounded-t-3xl z-10 transition-transform duration-300 ease-in-out overflow-y-auto ${
+            listView ? 'h-[60vh]' : 'h-0 transform translate-y-full'
+          }`}
+          style={{ 
+            transform: listView ? 'translateY(0)' : 'translateY(100%)'
+          }}
+        >
+          {/* Handle for pulling up/down */}
+          <div className="sticky top-0 w-full flex justify-center pt-2 pb-4 bg-white z-20">
+            <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+          </div>
+          
+          {/* List Content */}
+          <div className="px-6 pb-20">
             <h2 className="text-xl font-bold mb-4">
               {location ? `Places in ${location}` : "All listings"}
             </h2>
@@ -428,20 +445,20 @@ export default function MapPage() {
               </div>
             )}
           </div>
-        )}
+        </div>
         
         {/* Loading Indicator */}
-        {(loading || (!mapLoaded && !listView)) && (
-          <div className="flex justify-center items-center h-full absolute inset-0 pt-16 bg-white">
+        {(loading || !mapLoaded) && (
+          <div className="flex justify-center items-center h-full absolute inset-0 pt-16 bg-white z-30">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         )}
         
         {/* Toggle View Button */}
-        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-10">
+        <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-30">
           <button 
             onClick={handleToggleView}
-            className="bg-black text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg"
+            className="bg-black text-white px-6 py-3 rounded-full text-sm font-medium shadow-lg"
           >
             {listView ? "Show map" : "Show list"}
           </button>
